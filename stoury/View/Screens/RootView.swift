@@ -10,10 +10,17 @@ import SwiftUI
 struct RootView: View {
     @EnvironmentObject var sessionStore: SessionStore
     @State private var selectedTab: AppTab = .dashboard
-
+    @State private var searchText = ""
+   
     var body: some View {
         if sessionStore.isAuthenticated {
             VStack(spacing: 0) {
+                HStack {
+                    SearchInputField(text: $searchText)
+
+                }
+                .padding(8)
+
                 Group {
                     switch selectedTab {
                     case .dashboard:

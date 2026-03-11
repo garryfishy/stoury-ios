@@ -13,7 +13,7 @@ final class LoginViewModel: ObservableObject {
 
     init(sessionStore: SessionStore, apiService: APIService? = nil) {
         self.sessionStore = sessionStore
-        self.apiService = apiService ?? APIService()
+        self.apiService = apiService ?? APIService(sessionStore: sessionStore)
     }
 
     func login() async {

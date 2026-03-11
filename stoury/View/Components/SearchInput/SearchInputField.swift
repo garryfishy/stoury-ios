@@ -16,7 +16,7 @@ struct SearchInputField: View {
         HStack(spacing: 12){
             ZStack{
                 Circle()
-                    .fill(Color.orange)
+                    .fill(Color("PrimaryOrange"))
                     .frame(width: 44, height: 44)
                 
                 Image(systemName: "magnifyingglass")
@@ -44,7 +44,7 @@ struct SearchInputField: View {
         .background(.white)
         .overlay {
                    RoundedRectangle(cornerRadius: 18)
-                       .stroke(Color.orange.opacity(0.7), lineWidth: 1)
+                       .stroke(Color("PrimaryOrange").opacity(0.7), lineWidth: 1)
                }
                .clipShape(RoundedRectangle(cornerRadius: 18))
     }

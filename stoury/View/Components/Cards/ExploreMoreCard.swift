@@ -7,16 +7,15 @@
 
 import SwiftUI
 
-struct PopularCard: View {
+struct ExploreMoreCard: View {
     let imageURL: URL?
-    let labelText: String?
+//    let labelText: String?
     let title: String?
-    let subtitle: String?
 
     var body: some View {
-        RoundedRectangle(cornerRadius: 8)
+        RoundedRectangle(cornerRadius: 16)
             .fill(Color.white)
-            .frame(width: 175, height: 175)
+            .frame(width: 215, height: 155)
             .overlay {
                 if let imageURL {
                     AsyncImage(url: imageURL) { phase in
@@ -29,7 +28,7 @@ struct PopularCard: View {
                             image
                                 .resizable()
                                 .scaledToFill()
-                                .frame(width: 175, height: 175)
+                                .frame(width: 200, height: 175)
 
                         case .failure:
                             Color.gray.opacity(0.2)
@@ -45,7 +44,7 @@ struct PopularCard: View {
             .overlay(alignment: .bottom) {
                 Rectangle()
                     .fill(Color.black.opacity(0.8))
-                    .frame(height: 50)
+                    .frame(height: 35)
             }
             .overlay(alignment: .bottomLeading) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -53,27 +52,21 @@ struct PopularCard: View {
                         .font(.system(size: 14, weight: .bold))
                         .foregroundColor(.white)
                         .lineLimit(1)
-
-                    Text(subtitle ?? "")
-                        .font(.system(size: 10, weight: .regular))
-                        .foregroundColor(.white.opacity(0.9))
-                        .lineLimit(1)
                 }
                 .padding(.horizontal, 10)
-                .padding(.top, 4)
-                .padding(.bottom, 8)
+                .padding(.vertical, 8)
             }
-            .overlay(alignment: .topLeading) {
-                Text(labelText ?? "")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color("PrimaryOrange"))
-                    .cornerRadius(6)
-                    .padding(10)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+//            .overlay(alignment: .topLeading) {
+//                Text(labelText ?? "")
+//                    .font(.system(size: 10, weight: .bold))
+//                    .foregroundColor(.white)
+//                    .padding(.horizontal, 12)
+//                    .padding(.vertical, 6)
+//                    .background(Color("PrimaryOrange"))
+//                    .cornerRadius(6)
+//                    .padding(10)
+//            }
+            .clipShape(RoundedRectangle(cornerRadius: 16))
             .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
     }
 }
