@@ -34,10 +34,10 @@ enum APIError: Error, LocalizedError {
 }
 
 final class APIService {
-    private let baseURL = "https://stoury-api.oceandigital.id"
+    private let baseURL = "https://stoury-api.oceandigital.id/api"
     
     func login (email: String, password: String) async throws -> AuthSession {
-        guard let url = URL(string: "\(baseURL)/login") else {
+        guard let url = URL(string: "\(baseURL)/auth/login") else {
                     throw APIError.invalidURL
                 }
         let loginRequest = LoginRequest(email: email, password: password)
