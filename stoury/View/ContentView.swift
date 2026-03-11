@@ -8,14 +8,21 @@
 import SwiftUI
 
 struct ContentView: View {
+    @State private var goToLogin = false
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        
+        
+        NavigationStack {
+            VStack {
+                Button("Go to Login"){
+                    goToLogin = true
+                }
+            }
+            .navigationDestination(isPresented: $goToLogin){
+                LoginView()
+            }
         }
-        .padding()
     }
 }
 
