@@ -12,6 +12,7 @@ enum APIError: Error, LocalizedError {
     case invalidResponse
     case serverError(statusCode: Int)
     case decodingError
+    case encodingError
     case unknown
     
     var errorDescription: String? {
@@ -24,6 +25,8 @@ enum APIError: Error, LocalizedError {
                return "Server returned status code \(statusCode)."
            case .decodingError:
                return "Failed to read server data."
+           case .encodingError:
+               return "Failed to encode request data."
            case .unknown:
                return "Something went wrong."
            }
@@ -31,9 +34,9 @@ enum APIError: Error, LocalizedError {
 }
 
 final class APIService {
-    private let baseURL = "http://stoury-api.oceandigital.id"
+    private let baseURL = "https://stoury-api.oceandigital.id"
     
-    func login (email: String, password: String) async throws -> User {
+    func login (email: String, password: String) async throws -> AuthSession {
         guard let url = URL(string: "\(baseURL)/login") else {
                     throw APIError.invalidURL
                 }
@@ -42,9 +45,11 @@ final class APIService {
         var request = URLRequest(url: url )
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try? JSONEncoder().encode(loginRequest)
-        
+        request.httpBody = try JSONEncoder().encode(loginRequest)
+
         let (data, response) = try await URLSession.shared.data(for: request)
+        
+        
         
         guard let httpResponse = response as? HTTPURLResponse else {
                     throw APIError.invalidResponse
@@ -55,8 +60,9 @@ final class APIService {
                 }
 
                 do {
-                    let decoded = try JSONDecoder().decode(LoginResponse.self, from: data)
-                    return decoded.user
+                    let decoded = try JSONDecoder().decode(APIResponse<AuthSession>.self, from: data)
+                    return decoded.data
+
                 } catch {
                     throw APIError.decodingError
                 }

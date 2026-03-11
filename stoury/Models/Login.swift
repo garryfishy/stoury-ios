@@ -12,6 +12,3 @@ struct LoginRequest: Codable {
     let password: String
 }
 
-struct LoginResponse: Codable {
-    let user: User
-}

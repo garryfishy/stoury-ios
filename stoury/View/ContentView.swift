@@ -8,24 +8,25 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var goToLogin = false
+    @StateObject private var viewModel: DashboardViewModel
+
+    init(sessionStore: SessionStore) {
+        _viewModel = StateObject(
+            wrappedValue: DashboardViewModel(sessionStore: sessionStore)
+        )
+    }
 
     var body: some View {
-        
-        
-        NavigationStack {
-            VStack {
-                Button("Go to Login"){
-                    goToLogin = true
-                }
-            }
-            .navigationDestination(isPresented: $goToLogin){
-                LoginView()
+        VStack {
+            Text("Home")
+
+            Button("Logout") {
+                viewModel.logout()
             }
         }
     }
 }
 
 #Preview {
-    ContentView()
+    ContentView(sessionStore: SessionStore())
 }

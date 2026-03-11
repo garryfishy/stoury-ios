@@ -1,43 +1,38 @@
-//
-//  LoginViewModel.swift
-//  stoury
-//
-//  Created by Muhammad Arfian Praniza on 10/03/26.
-//
-
 import Foundation
 import Combine
 
 @MainActor
 final class LoginViewModel: ObservableObject {
-    @Published var email: String = ""
-    @Published var password: String = ""
-    @Published var isLoading: Bool = false
-    @Published var errorMessage: String? = nil
-    @Published var loggedInUser: User?
-    
-    private let apiService: APIService
+    @Published var email = ""
+    @Published var password = ""
+    @Published var isLoading = false
+    @Published var errorMessage: String?
 
-      init(apiService: APIService? = nil) {
-          self.apiService = apiService ?? APIService()
-      }
+    private let apiService: APIService
+    private let sessionStore: SessionStore
+
+    init(sessionStore: SessionStore, apiService: APIService? = nil) {
+        self.sessionStore = sessionStore
+        self.apiService = apiService ?? APIService()
+    }
 
     func login() async {
         guard !email.isEmpty, !password.isEmpty else {
             errorMessage = "Email and password cannot be empty."
             return
         }
-        
+
+        errorMessage = nil
         isLoading = true
         defer { isLoading = false }
-        
+
         do {
-            let login = try await apiService.login(email: email, password: password)
-            loggedInUser = login
+            let session = try await apiService.login(email: email, password: password)
+            sessionStore.setSession(session)
         } catch {
-            errorMessage = errorMessage ?? "Failed to login. Please try again later."
+            errorMessage = error.localizedDescription
         }
     }
     
-    
+   
 }
