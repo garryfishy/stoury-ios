@@ -9,7 +9,8 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var viewModel: DashboardViewModel
-    
+    @State private var searchText = ""
+   
     init(sessionStore: SessionStore) {
         _viewModel = StateObject(
             wrappedValue: DashboardViewModel(sessionStore: sessionStore)
@@ -22,6 +23,13 @@ struct ContentView: View {
         GridItem(.fixed(175))
     ]
     var body: some View {
+            HStack {
+                SearchInputField(text: $searchText)
+
+            }
+            .padding(8)
+        
+        
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 24) {
                 
@@ -47,7 +55,6 @@ struct ContentView: View {
                     LazyHStack(spacing: 16) {
                         ForEach(viewModel.exploreMore) {
                             item in ExploreMoreCard(imageURL: item.thumbnailImageUrl,
-//                                                    labelText: item.badge,
                                                     title: item.name)
                         }
                     }

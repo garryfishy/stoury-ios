@@ -10,7 +10,7 @@ import SwiftUI
 struct ExploreMoreCard: View {
     let imageURL: URL?
 //    let labelText: String?
-    let title: String?
+    let title: String? 
 
     var body: some View {
         RoundedRectangle(cornerRadius: 16)

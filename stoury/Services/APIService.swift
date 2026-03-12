@@ -109,6 +109,47 @@ final class APIService {
             print("Actual decoding error:", error)
             throw error
         }
+    }
+    
+    func getAttractionsByDestination(destination: String = "batam", query: String) async throws -> [Attraction] {
+        guard var components = URLComponents(string: "\(baseURL)/destinations/\(destination)/attractions") else {
+              throw APIError.invalidURL
+          }
+        
+        if !query.isEmpty {
+              components.queryItems = [
+                  URLQueryItem(name: "query", value: query)
+              ]
+          }
+        
+        guard let url = components.url else {
+            throw APIError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        if let token = sessionStore.accessToken {
+               request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+           }
 
+           let (data, response) = try await URLSession.shared.data(for: request)
+
+           guard let httpResponse = response as? HTTPURLResponse else {
+               throw APIError.invalidResponse
+           }
+
+           guard 200...299 ~= httpResponse.statusCode else {
+               throw APIError.serverError(statusCode: httpResponse.statusCode)
+           }
+
+           do {
+               let decoded = try JSONDecoder().decode(AttractionsResponse.self, from: data)
+               return decoded.data.items
+           } catch {
+               throw APIError.decodingError
+           }
+        
     }
 }
