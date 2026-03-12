@@ -37,7 +37,7 @@ struct TripCard: View {
         VStack(spacing: 16) {
             Image(systemName: "globe.asia.australia.fill")
                 .font(.system(size: 42, weight: .semibold))
-                .foregroundColor(.orange)
+                .foregroundColor(Color("PrimaryOrange"))
 
             Text(title)
                 .font(.system(size: 20, weight: .bold))
@@ -55,9 +55,9 @@ struct TripCard: View {
                     .multilineTextAlignment(.center)
             }
 
-            VStack(spacing: 12) {
-                StouryButton(title: secondaryTitle, style: .outline, action: onSecondary)
-                StouryButton(title: primaryTitle, systemImage: "sparkles", style: .filled, action: onPrimary)
+            VStack(spacing: 10) {
+                StouryButton(title: secondaryTitle, style: .secondary, action: onSecondary)
+                StouryButton(title: primaryTitle, systemImage: "sparkles", style: .primary, action: onPrimary)
             }
             .padding(.top, 4)
             .padding(.horizontal, 10)

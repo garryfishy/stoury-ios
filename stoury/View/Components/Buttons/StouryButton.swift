@@ -14,14 +14,14 @@ struct StouryButton: View {
     let action: () -> Void
 
     enum Style {
-        case outline
-        case filled
+        case secondary
+        case primary
     }
 
     init(
         title: String,
         systemImage: String? = nil,
-        style: Style = .outline,
+        style: Style = .secondary,
         isDisabled: Bool = false,
         action: @escaping () -> Void
     ) {
@@ -57,38 +57,42 @@ struct StouryButton: View {
         .opacity(isDisabled ? 0.6 : 1.0)
     }
 
+    private var primaryColor: Color {
+        Color("PrimaryOrange")
+    }
+    
     private var foregroundColor: Color {
         switch style {
-        case .outline:
+        case .secondary:
             return .gray
-        case .filled:
+        case .primary:
             return .white
         }
     }
 
     private var backgroundColor: Color {
         switch style {
-        case .outline:
+        case .secondary:
             return .clear
-        case .filled:
-            return .orange
+        case .primary:
+            return primaryColor
         }
     }
 
     private var borderColor: Color {
         switch style {
-        case .outline:
+        case .secondary:
             return .black
-        case .filled:
-            return .orange
+        case .primary:
+            return .black
         }
     }
 }
 
 #Preview {
     VStack(spacing: 12) {
-        StouryButton(title: "Tentukan sendiri", style: .outline) {}
-        StouryButton(title: "Buat rencana dengan AI", systemImage: "sparkles", style: .filled) {}
+        StouryButton(title: "Tentukan sendiri", style: .secondary) {}
+        StouryButton(title: "Buat rencana dengan AI", systemImage: "sparkles", style: .primary) {}
     }
     .padding()
 }
