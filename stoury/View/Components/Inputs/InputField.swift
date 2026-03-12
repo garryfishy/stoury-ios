@@ -14,6 +14,8 @@ struct InputField: View {
     let isSecure: Bool
     let keyboardType: UIKeyboardType
 
+    @State private var isPasswordVisible = false
+
     init(
         title: String,
         systemImage: String,
@@ -28,34 +30,67 @@ struct InputField: View {
         self.keyboardType = keyboardType
     }
 
+    private var primaryOrange: Color {
+        Color("PrimaryOrange")
+    }
+
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: systemImage)
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(.orange)
+                .foregroundColor(primaryOrange)
+
+            fieldView
 
             if isSecure {
-                SecureField(title, text: $text)
-                    .foregroundColor(.orange)
-            } else {
-                TextField(title, text: $text)
-                    .textInputAutocapitalization(.never)
-                    .foregroundColor(.orange)
-                    .keyboardType(keyboardType)
+                Button {
+                    isPasswordVisible.toggle()
+                } label: {
+                    Image(systemName: isPasswordVisible ? "eye.slash" : "eye")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(primaryOrange)
+                }
             }
         }
         .padding(.horizontal, 16)
         .frame(height: 56)
         .background(
             RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(Color.orange, lineWidth: 1.5)
+                .stroke(primaryOrange, lineWidth: 1.5)
         )
     }
+
+    @ViewBuilder
+    private var fieldView: some View {
+        if isSecure {
+            if isPasswordVisible {
+                TextField(title, text: $text)
+                    .foregroundColor(primaryOrange)
+                    .multilineTextAlignment(.center)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled(true)
+            } else {
+                SecureField(title, text: $text)
+                    .foregroundColor(primaryOrange)
+                    .multilineTextAlignment(.center)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled(true)
+            }
+        } else {
+            TextField(title, text: $text)
+                .foregroundColor(primaryOrange)
+                .multilineTextAlignment(.center)
+                .keyboardType(keyboardType)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled(true)
+        }
+    }
 }
+
 #Preview {
     VStack(spacing: 16) {
         InputField(title: "Nama akun", systemImage: "person", text: .constant(""))
-        InputField(title: "Nomor telpon", systemImage: "phone", text: .constant(""), keyboardType: .phonePad)
+        InputField(title: "E-mail", systemImage: "envelope", text: .constant(""), keyboardType: .emailAddress)
         InputField(title: "Kata sandi", systemImage: "lock", text: .constant(""), isSecure: true)
     }
     .padding()
