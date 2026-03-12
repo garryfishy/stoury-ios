@@ -42,7 +42,8 @@ struct RootView: View {
                 BottomNavbar(selectedTab: $selectedTab)
             }
         } else {
-            LoginView(sessionStore: sessionStore)
+//            LoginView(sessionStore: sessionStore)
+            GenerateWithAIView()
         }
     }
 }

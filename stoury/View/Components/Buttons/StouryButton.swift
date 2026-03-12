@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+
 struct StouryButton: View {
     let title: String
     let systemImage: String?
@@ -43,7 +44,7 @@ struct StouryButton: View {
                 Text(title)
                     .font(.system(size: 16, weight: .semibold))
             }
-            .frame(maxWidth: 263)
+            .frame(maxWidth: .infinity)
             .frame(height: 52)
         }
         .foregroundColor(foregroundColor)
@@ -54,14 +55,29 @@ struct StouryButton: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
         .disabled(isDisabled)
-        .opacity(isDisabled ? 0.6 : 1.0)
     }
 
     private var primaryColor: Color {
         Color("PrimaryOrange")
     }
-    
+
+    private var disabledBackgroundColor: Color {
+        Color(.systemGray5)
+    }
+
+    private var disabledForegroundColor: Color {
+        Color(.systemGray)
+    }
+
+    private var disabledBorderColor: Color {
+        Color.clear
+    }
+
     private var foregroundColor: Color {
+        if isDisabled {
+            return disabledForegroundColor
+        }
+
         switch style {
         case .secondary:
             return .gray
@@ -71,6 +87,10 @@ struct StouryButton: View {
     }
 
     private var backgroundColor: Color {
+        if isDisabled {
+            return disabledBackgroundColor
+        }
+
         switch style {
         case .secondary:
             return .clear
@@ -80,6 +100,10 @@ struct StouryButton: View {
     }
 
     private var borderColor: Color {
+        if isDisabled {
+            return disabledBorderColor
+        }
+
         switch style {
         case .secondary:
             return .black
@@ -93,6 +117,7 @@ struct StouryButton: View {
     VStack(spacing: 12) {
         StouryButton(title: "Tentukan sendiri", style: .secondary) {}
         StouryButton(title: "Buat rencana dengan AI", systemImage: "sparkles", style: .primary) {}
+        StouryButton(title: "Disabled", systemImage: "sparkles", style: .primary, isDisabled: true) {}
     }
     .padding()
 }
