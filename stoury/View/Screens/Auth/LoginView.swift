@@ -57,7 +57,7 @@ struct LoginView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12))
             }
             .disabled(viewModel.isLoading)
-
+            
             Button("Mock Login") {
                 sessionStore.setSession(
                     AuthSession(

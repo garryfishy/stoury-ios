@@ -6,8 +6,13 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		4E6ECB2F2F6275270098C80D /* perjalanan.svg in Sources */ = {isa = PBXBuildFile; fileRef = 4E6ECB2E2F6275260098C80D /* perjalanan.svg */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		4E6ECA4F2F5FDE1C0098C80D /* stoury.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = stoury.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4E6ECB2E2F6275260098C80D /* perjalanan.svg */ = {isa = PBXFileReference; lastKnownFileType = text; path = perjalanan.svg; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -34,6 +39,7 @@
 			children = (
 				4E6ECA512F5FDE1C0098C80D /* stoury */,
 				4E6ECA502F5FDE1C0098C80D /* Products */,
+				4E6ECB2E2F6275260098C80D /* perjalanan.svg */,
 			);
 			sourceTree = "<group>";
 		};
@@ -119,6 +125,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4E6ECB2F2F6275270098C80D /* perjalanan.svg in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
