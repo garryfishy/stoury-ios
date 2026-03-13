@@ -101,7 +101,7 @@ struct LoginView: View {
                     }
 
                     Text("Dengan menekan Lanjutkan,\nAnda menyetujui Syarat & Ketentuan serta Kebijakan Privasi kami.")
-                        .font(.system(size: 10, weight: .regular))
+                        .font(.system(size: 9, weight: .regular))
                         .foregroundColor(.gray)
                         .multilineTextAlignment(.center)
                 }

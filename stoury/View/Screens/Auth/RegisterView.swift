@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-
 struct RegisterView: View {
     @State private var name = ""
     @State private var email = ""
@@ -95,3 +94,4 @@ struct RegisterView: View {
 #Preview {
     RegisterView()
 }
+

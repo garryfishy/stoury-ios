@@ -37,19 +37,25 @@ struct InputField: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: systemImage)
+                .frame(width: 30)
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundColor(primaryOrange)
 
             fieldView
+                .frame(maxWidth: .infinity, alignment: .center)
 
             if isSecure {
                 Button {
                     isPasswordVisible.toggle()
                 } label: {
                     Image(systemName: isPasswordVisible ? "eye.slash" : "eye")
+                        .frame(width: 24)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(primaryOrange)
                 }
+            } else {
+                Spacer()
+                    .frame(width: 24)
             }
         }
         .padding(.horizontal, 16)

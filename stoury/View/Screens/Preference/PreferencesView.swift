@@ -62,12 +62,21 @@ struct PreferencesView: View {
                         selectedIDs: $selectedIDs
                     )
 
-                    StouryButton(title: "Lanjutkan", style: .primary) {
+                    Button {
                         showDashboard = true
+                    } label: {
+                        Text("LANJUTKAN")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: 320)
+                            .frame(height: 50)
+                            .background(Color.blue)
+                            .clipShape(Capsule())
                     }
                 }
                 .padding(.horizontal, 24)
             }
+            // COBA DISESUAIKAN
             .navigationDestination(isPresented: $showDashboard) {
                 ContentView(sessionStore: sessionStore)
             }
@@ -79,3 +88,4 @@ struct PreferencesView: View {
     PreferencesView()
         .environmentObject(SessionStore())
 }
+

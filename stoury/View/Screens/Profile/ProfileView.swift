@@ -20,7 +20,8 @@ struct ProfileView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: 50) {
+            Spacer()
             VStack(spacing: 24) {
                 ProfileCard(
                     name: displayName,
@@ -28,8 +29,8 @@ struct ProfileView: View {
                 )
 
                 VStack(spacing: 12) {
-                    InputField(title: "Profil", systemImage: "person", text: .constant(""))
-                    InputField(title: "Keluar", systemImage: "arrow.turn.up.left", text: .constant(""))
+                    StouryButton(title: "Profil", systemImage: "person", style: .secondary) {}
+                    StouryButton(title: "Keluar", systemImage: "arrow.turn.up.left", style: .secondary) {}
                 }
             }
             .padding(.top, 80)
@@ -46,3 +47,4 @@ struct ProfileView: View {
     ProfileView()
         .environmentObject(SessionStore())
 }
+
