@@ -39,10 +39,26 @@ final class SessionStore: ObservableObject {
         session?.accessToken
     }
 
+    var refreshToken: String? {
+        session?.refreshToken
+    }
+
     func setSession(_ session: AuthSession) {
         self.session = session
         needsPreferences = shouldShowPreferences(for: session.user)
         persistence.saveSession(session)
+    }
+
+    func updateSessionTokens(accessToken: String, refreshToken: String?) {
+        guard let session else { return }
+
+        let updatedSession = AuthSession(
+            accessToken: accessToken,
+            refreshToken: refreshToken ?? session.refreshToken,
+            user: session.user
+        )
+
+        setSession(updatedSession)
     }
 
     func clearSession() {

@@ -42,6 +42,7 @@ enum APIError: Error, LocalizedError {
 final class APIService {
     private let baseURL = "https://stoury-api.oceandigital.id/api"
     private let sessionStore: SessionStore
+    private var refreshTask: Task<Void, Error>?
 
     init(sessionStore: SessionStore) {
         self.sessionStore = sessionStore
@@ -54,6 +55,100 @@ final class APIService {
         }
 
         print("API request body:", bodyString)
+    }
+
+    private func applyAuthorization(to request: inout URLRequest) {
+        guard let token = sessionStore.accessToken else { return }
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+    }
+
+    private func authorizedData(for request: URLRequest) async throws -> Data {
+        var request = request
+        applyAuthorization(to: &request)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 401 {
+            try await refreshSession()
+
+            var retryRequest = request
+            applyAuthorization(to: &retryRequest)
+
+            let (retryData, retryResponse) = try await URLSession.shared.data(for: retryRequest)
+            if let retryHTTPResponse = retryResponse as? HTTPURLResponse, retryHTTPResponse.statusCode == 401 {
+                sessionStore.clearSession()
+            }
+            try validateSuccessfulResponse(data: retryData, response: retryResponse)
+            return retryData
+        }
+
+        try validateSuccessfulResponse(data: data, response: response)
+        return data
+    }
+
+    private func refreshSession() async throws {
+        if let refreshTask {
+            try await refreshTask.value
+            return
+        }
+
+        let task = Task {
+            try await performRefreshSession()
+        }
+        refreshTask = task
+
+        defer {
+            refreshTask = nil
+        }
+
+        try await task.value
+    }
+
+    private func performRefreshSession() async throws {
+        guard let refreshToken = sessionStore.refreshToken else {
+            sessionStore.clearSession()
+            throw APIError.serverErrorWithMessage(statusCode: 401, message: "Session expired. Please log in again.")
+        }
+
+        guard let url = URL(string: "\(baseURL)/auth/refresh") else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(RefreshTokenRequest(refreshToken: refreshToken))
+        printRequestBody(request)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        do {
+            try validateSuccessfulResponse(data: data, response: response)
+        } catch {
+            sessionStore.clearSession()
+            throw error
+        }
+
+        do {
+            let decoded = try JSONDecoder().decode(APIResponse<RefreshTokenResponse>.self, from: data)
+            let refreshedUser = decoded.data.user ?? sessionStore.currentUser
+
+            guard let refreshedUser else {
+                sessionStore.clearSession()
+                throw APIError.decodingError
+            }
+
+            sessionStore.setSession(
+                AuthSession(
+                    accessToken: decoded.data.accessToken,
+                    refreshToken: decoded.data.refreshToken ?? refreshToken,
+                    user: refreshedUser
+                )
+            )
+        } catch {
+            sessionStore.clearSession()
+            throw APIError.decodingError
+        }
     }
 
     private func validateSuccessfulResponse(data: Data, response: URLResponse) throws {
@@ -110,13 +205,7 @@ final class APIService {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        if let token = sessionStore.accessToken {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-        try validateSuccessfulResponse(data: data, response: response)
+        let data = try await authorizedData(for: request)
 
         do {
             let decoded = try JSONDecoder().decode(APIResponse<DashboardHome>.self, from: data)
@@ -137,13 +226,7 @@ final class APIService {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        if let token = sessionStore.accessToken {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-        try validateSuccessfulResponse(data: data, response: response)
+        let data = try await authorizedData(for: request)
 
         do {
             let decoded = try JSONDecoder().decode(APIResponse<[Trip]>.self, from: data)
@@ -161,13 +244,7 @@ final class APIService {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        if let token = sessionStore.accessToken {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-        try validateSuccessfulResponse(data: data, response: response)
+        let data = try await authorizedData(for: request)
 
         do {
             let decoded = try JSONDecoder().decode(APIResponse<Trip>.self, from: data)
@@ -185,13 +262,7 @@ final class APIService {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        if let token = sessionStore.accessToken {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-        try validateSuccessfulResponse(data: data, response: response)
+        let data = try await authorizedData(for: request)
 
         do {
             let decoded = try JSONDecoder().decode(APIResponse<TripItinerary>.self, from: data)
@@ -209,13 +280,7 @@ final class APIService {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        if let token = sessionStore.accessToken {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-        try validateSuccessfulResponse(data: data, response: response)
+        let data = try await authorizedData(for: request)
 
         do {
             let decoded = try JSONDecoder().decode(APIResponse<[Preference]>.self, from: data)
@@ -233,13 +298,7 @@ final class APIService {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        if let token = sessionStore.accessToken {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-        try validateSuccessfulResponse(data: data, response: response)
+        let data = try await authorizedData(for: request)
 
         do {
             let decoded = try JSONDecoder().decode(APIResponse<[Preference]>.self, from: data)
@@ -266,13 +325,7 @@ final class APIService {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        if let token = sessionStore.accessToken {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-        try validateSuccessfulResponse(data: data, response: response)
+        let data = try await authorizedData(for: request)
 
         do {
             let decoded = try JSONDecoder().decode(APIResponse<[DashboardDestination]>.self, from: data)
@@ -290,16 +343,9 @@ final class APIService {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        if let token = sessionStore.accessToken {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-
         request.httpBody = try JSONEncoder().encode(body)
         printRequestBody(request)
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-        try validateSuccessfulResponse(data: data, response: response)
+        let data = try await authorizedData(for: request)
 
         do {
             let decoded = try JSONDecoder().decode(APIResponse<CreatedTrip>.self, from: data)
@@ -317,13 +363,7 @@ final class APIService {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        if let token = sessionStore.accessToken {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-        try validateSuccessfulResponse(data: data, response: response)
+        let data = try await authorizedData(for: request)
 
         do {
             let decoded = try JSONDecoder().decode(APIResponse<GeneratedItineraryPreview>.self, from: data)
@@ -341,19 +381,22 @@ final class APIService {
         var request = URLRequest(url: url)
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        if let token = sessionStore.accessToken {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-
         request.httpBody = try JSONEncoder().encode(body)
         printRequestBody(request)
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-        try validateSuccessfulResponse(data: data, response: response)
+        _ = try await authorizedData(for: request)
     }
 }
 
 private struct ServerErrorResponse: Decodable {
     let message: String
+}
+
+private struct RefreshTokenRequest: Encodable {
+    let refreshToken: String
+}
+
+private struct RefreshTokenResponse: Decodable {
+    let accessToken: String
+    let refreshToken: String?
+    let user: User?
 }
