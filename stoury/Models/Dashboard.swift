@@ -24,7 +24,7 @@ struct DashboardDestination: Decodable {
     let countryCode: String
     let countryName: String
     let provinceName: String
-    let cityName: String
+    let cityName: String?
     let regionName: String?
     let heroImageUrl: URL?
 }

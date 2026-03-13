@@ -11,9 +11,13 @@ struct CustomDateRangeCalendar: View {
     @Binding var displayedMonth: Date
     @Binding var startDate: Date?
     @Binding var endDate: Date?
+    var blockPreviousDates: Bool = false
 
     private let calendar = Calendar.current
     private let weekdays = ["MIN", "SEN", "SEL", "RAB", "KAM", "JUM", "SAB"]
+    private var today: Date {
+        calendar.startOfDay(for: Date())
+    }
 
     private var daysInMonth: [DateValue] {
         guard let monthInterval = calendar.dateInterval(of: .month, for: displayedMonth),
@@ -133,6 +137,7 @@ struct CustomDateRangeCalendar: View {
         let isSingleSelected = isStart && endDate == nil
         let isInRange = isDateInRange(date)
         let isToday = calendar.isDateInToday(date)
+        let isBlocked = isDateBlocked(date)
 
         Button {
             handleDateTap(date)
@@ -152,16 +157,23 @@ struct CustomDateRangeCalendar: View {
 
                 Text("\(day)")
                     .font(.system(size: 18, weight: (isStart || isEnd || isSingleSelected) ? .bold : .regular))
-                    .foregroundColor((isStart || isEnd || isSingleSelected) ? .white : .primary)
+                    .foregroundColor(
+                        (isStart || isEnd || isSingleSelected) ? .white : (isBlocked ? .gray.opacity(0.45) : .primary)
+                    )
                     .frame(width: 36, height: 36)
             }
             .frame(maxWidth: .infinity)
         }
         .buttonStyle(.plain)
+        .disabled(isBlocked)
     }
 
     private func handleDateTap(_ tappedDate: Date) {
         let normalizedDate = calendar.startOfDay(for: tappedDate)
+
+        guard !isDateBlocked(normalizedDate) else {
+            return
+        }
 
         if startDate == nil {
             startDate = normalizedDate
@@ -202,6 +214,11 @@ struct CustomDateRangeCalendar: View {
         }
 
         return normalizedDate == normalizedStart
+    }
+
+    private func isDateBlocked(_ date: Date) -> Bool {
+        guard blockPreviousDates else { return false }
+        return calendar.startOfDay(for: date) < today
     }
 }
 

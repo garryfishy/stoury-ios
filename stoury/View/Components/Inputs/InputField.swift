@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct InputField: View {
     let title: String
@@ -7,6 +8,8 @@ struct InputField: View {
 
     var leadingSystemImage: String? = nil
     var keyboardType: UIKeyboardType = .default
+    var textContentType: UITextContentType? = nil
+    var numbersOnly: Bool = false
     var isSecure: Bool = false
     var helperText: String? = nil
     var errorText: String? = nil
@@ -32,8 +35,16 @@ struct InputField: View {
 
                     if isSecure {
                         SecureField("", text: $text)
+                            .keyboardType(keyboardType)
+                            .textContentType(textContentType)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
                     } else {
                         TextField("", text: $text)
+                            .keyboardType(keyboardType)
+                            .textContentType(textContentType)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
                     }
                 }
 
@@ -49,9 +60,14 @@ struct InputField: View {
                         lineWidth: 1
                     )
             )
-            .keyboardType(keyboardType)
-            .autocorrectionDisabled()
-            .textInputAutocapitalization(.never)
+            .onChange(of: text) { _, newValue in
+                guard numbersOnly else { return }
+
+                let filteredValue = newValue.filter(\.isNumber)
+                if filteredValue != newValue {
+                    text = filteredValue
+                }
+            }
 
             if let errorText {
                 Text(errorText)

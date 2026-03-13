@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct DateRangePickerField: View {
     let title: String
@@ -6,6 +7,7 @@ struct DateRangePickerField: View {
     @Binding var startDate: Date?
     @Binding var endDate: Date?
     var leadingSystemImage: String? = nil
+    var blockPreviousDates: Bool = false
 
     @State private var isExpanded = false
     @State private var displayedMonth = Date()
@@ -32,12 +34,22 @@ struct DateRangePickerField: View {
         startDate == nil && endDate == nil
     }
 
+    private func dismissKeyboard() {
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
                 .font(.system(size: 18, weight: .semibold))
 
             Button {
+                dismissKeyboard()
                 withAnimation(.easeInOut(duration: 0.2)) {
                     isExpanded.toggle()
                 }
@@ -69,7 +81,8 @@ struct DateRangePickerField: View {
                     CustomDateRangeCalendar(
                         displayedMonth: $displayedMonth,
                         startDate: $startDate,
-                        endDate: $endDate
+                        endDate: $endDate,
+                        blockPreviousDates: blockPreviousDates
                     )
                     .offset(y: fieldHeight + 8)
                     .zIndex(9999)
@@ -77,5 +90,12 @@ struct DateRangePickerField: View {
             }
         }
         .zIndex(isExpanded ? 9999 : 0)
+        .onChange(of: endDate) { _, newValue in
+            guard newValue != nil else { return }
+
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isExpanded = false
+            }
+        }
     }
 }
