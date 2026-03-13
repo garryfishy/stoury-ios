@@ -11,6 +11,9 @@ import Combine
 @MainActor
 final class SessionStore: ObservableObject {
     @Published private(set) var session: AuthSession?
+    @Published var needsPreferences = false
+
+    private let hasCompletedPreferencesKeyPrefix = "stoury.hasCompletedPreferences."
 
     var isAuthenticated: Bool {
         session != nil
@@ -20,15 +23,39 @@ final class SessionStore: ObservableObject {
         session?.user
     }
 
+    var shouldShowPreferencesForCurrentUser: Bool {
+        shouldShowPreferences(for: currentUser)
+    }
+
     var accessToken: String? {
         session?.accessToken
     }
 
     func setSession(_ session: AuthSession) {
         self.session = session
+        needsPreferences = shouldShowPreferences(for: session.user)
     }
 
     func clearSession() {
         self.session = nil
+        needsPreferences = false
+    }
+
+    func markPreferencesCompleted(for user: User?) {
+        guard let user else { return }
+        let key = hasCompletedPreferencesKeyPrefix + userKey(for: user)
+        UserDefaults.standard.set(true, forKey: key)
+        needsPreferences = false
+    }
+
+    func shouldShowPreferences(for user: User?) -> Bool {
+        guard let user else { return false }
+        let key = hasCompletedPreferencesKeyPrefix + userKey(for: user)
+        let hasCompleted = UserDefaults.standard.bool(forKey: key)
+        return !hasCompleted
+    }
+
+    private func userKey(for user: User) -> String {
+        return user.id.uuidString
     }
 }

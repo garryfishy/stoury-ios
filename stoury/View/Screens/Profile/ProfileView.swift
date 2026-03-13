@@ -20,26 +20,30 @@ struct ProfileView: View {
     }
 
     var body: some View {
-        VStack(spacing: 50) {
-            Spacer()
-            VStack(spacing: 24) {
-                ProfileCard(
-                    name: displayName,
-                    email: displayEmail
-                )
+        NavigationStack {
+            VStack(spacing: 50) {
+//                Spacer()
+                VStack(spacing: 24) {
+                    ProfileCard(
+                        name: displayName,
+                        email: displayEmail
+                    )
 
-                VStack(spacing: 12) {
-                    StouryButton(title: "Profil", systemImage: "person", style: .secondary) {}
-                    StouryButton(title: "Keluar", systemImage: "arrow.turn.up.left", style: .secondary) {}
+                    VStack(spacing: 12) {
+                        StouryButton(title: "Profil", systemImage: "person", style: .tertiary) {}
+                        StouryButton(title: "Keluar", systemImage: "arrow.turn.up.left", style: .tertiary) {
+                            sessionStore.clearSession()
+                        }
+                    }
                 }
+                .padding(.top, 80)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
-            .padding(.top, 80)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-
-            BottomNavbar(selectedTab: $selectedTab)
+            .padding(.horizontal, 24)
+            .background(Color.white)
+            .navigationTitle("Profil")
+            .navigationBarTitleDisplayMode(.inline)
         }
-        .padding(.horizontal, 24)
-        .background(Color.white)
     }
 }
 

@@ -11,12 +11,23 @@ struct PreferenceItem: Identifiable, Hashable {
     let title: String
     let subtitle: String
     let imageName: String
+    let imageScale: CGFloat
+    let imageOffsetY: CGFloat
 
-    init(id: String, title: String, subtitle: String, imageName: String) {
+    init(
+        id: String,
+        title: String,
+        subtitle: String,
+        imageName: String,
+        imageScale: CGFloat = 1.0,
+        imageOffsetY: CGFloat = 12
+    ) {
         self.id = id
         self.title = title
         self.subtitle = subtitle
         self.imageName = imageName
+        self.imageScale = imageScale
+        self.imageOffsetY = imageOffsetY
     }
 }
 
@@ -67,6 +78,9 @@ private struct PreferenceRow: View {
                     .resizable()
                     .scaledToFill()
                     .frame(width: 83, height: 77)
+                    .scaleEffect(item.imageScale)
+                    .offset(y: item.imageOffsetY)
+                    .clipped()
                     .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
 //                    .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous))
 
@@ -102,25 +116,29 @@ private struct PreferenceRow: View {
                 id: "popular",
                 title: "Populer",
                 subtitle: "Jelajahi destinasi favorit yang paling\nsering dikunjungi traveler.",
-                imageName: "pref-populer"
+                imageName: "populer",
+                imageScale: 1.4
             ),
             PreferenceItem(
                 id: "food",
                 title: "Makanan",
                 subtitle: "Temukan rasa autentik dan rekomendasi\ntempat makan terbaik.",
-                imageName: "pref-makanan"
+                imageName: "makanan",
+                imageScale: 1.4
             ),
             PreferenceItem(
                 id: "shop",
                 title: "Belanja",
                 subtitle: "Dari pasar seni hingga mall mewah,\ntemukan surga belanjamu.",
-                imageName: "pref-belanja"
+                imageName: "belanja",
+                imageScale: 1.4
             ),
             PreferenceItem(
                 id: "history",
                 title: "Sejarah",
                 subtitle: "Telusuri jejak sejarah dan keindahan\nwarisan masa lalu.",
-                imageName: "pref-sejarah"
+                imageName: "sejarah",
+                imageOffsetY: 0
             )
         ],
         selectedIDs: .constant(["shop"])

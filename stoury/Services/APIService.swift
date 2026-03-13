@@ -22,7 +22,10 @@ enum APIError: Error, LocalizedError {
            case .invalidResponse:
                return "The server response was invalid."
            case .serverError(let statusCode):
-               return "Server returned status code \(statusCode)."
+               if statusCode == 401 || statusCode == 422 {
+                   return "Email atau kata sandi salah."
+               }
+               return "Server bermasalah (\(statusCode))."
            case .decodingError:
                return "Failed to read server data."
            case .encodingError:
