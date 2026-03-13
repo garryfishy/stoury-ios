@@ -10,47 +10,15 @@ import SwiftUI
 struct PreferencesView: View {
     @EnvironmentObject private var sessionStore: SessionStore
     @Binding var isPresented: Bool
-    @State private var selectedIDs: Set<String> = []
+    @StateObject private var viewModel: PreferencesViewModel
 
-    init(isPresented: Binding<Bool> = .constant(true)) {
+    init(isPresented: Binding<Bool> = .constant(true), viewModel: PreferencesViewModel? = nil) {
         self._isPresented = isPresented
+        _viewModel = StateObject(wrappedValue: viewModel ?? PreferencesViewModel())
     }
 
     private var primaryOrange: Color {
         Color("PrimaryOrange")
-    }
-
-    private var items: [PreferenceItem] {
-        [
-            PreferenceItem(
-                id: "popular",
-                title: "Populer",
-                subtitle: "Jelajahi destinasi favorit yang paling\nsering dikunjungi traveler.",
-                imageName: "populer",
-                imageScale: 1.4
-            ),
-            PreferenceItem(
-                id: "food",
-                title: "Makanan",
-                subtitle: "Temukan rasa autentik dan rekomendasi\ntempat makan terbaik.",
-                imageName: "makanan",
-                imageScale: 1.4
-            ),
-            PreferenceItem(
-                id: "shop",
-                title: "Belanja",
-                subtitle: "Dari pasar seni hingga mall mewah,\ntemukan surga belanjamu.",
-                imageName: "belanja",
-                imageScale: 1.4
-            ),
-            PreferenceItem(
-                id: "history",
-                title: "Sejarah",
-                subtitle: "Telusuri jejak sejarah dan keindahan\nwarisan masa lalu.",
-                imageName: "sejarah",
-                imageScale: 1
-            )
-        ]
     }
 
     var body: some View {
@@ -65,35 +33,52 @@ struct PreferencesView: View {
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
 
-                    PreferencesCard(
-                        items: items,
-                        selectedIDs: $selectedIDs
-                    )
+                    if viewModel.isLoading {
+                        LoadingView()
+                    } else {
+                        PreferencesCard(
+                            items: viewModel.items,
+                            selectedIDs: $viewModel.selectedIDs
+                        )
+                    }
+
+                    if let errorMessage = viewModel.errorMessage {
+                        Text(errorMessage)
+                            .font(.system(size: 12, weight: .regular))
+                            .foregroundColor(.red)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
 
                     Button {
-                        if !selectedIDs.isEmpty {
-                            sessionStore.markPreferencesCompleted(for: sessionStore.currentUser)
-                            isPresented = false
+                        Task {
+                            let isSaved = await viewModel.savePreferences()
+                            if isSaved {
+                                sessionStore.markPreferencesCompleted(for: sessionStore.currentUser)
+                                isPresented = false
+                            }
                         }
                     } label: {
-                        Text("LANJUTKAN")
+                        Text(viewModel.isSaving ? "MENYIMPAN..." : "LANJUTKAN")
                             .font(.system(size: 14, weight: .bold))
                             .foregroundColor(.white)
                             .frame(maxWidth: 320)
                             .frame(height: 50)
-                            .background(selectedIDs.isEmpty ? Color.gray : Color.blue)
+                            .background(viewModel.selectedIDs.isEmpty ? Color.gray : Color.blue)
                             .clipShape(Capsule())
                     }
-                    .disabled(selectedIDs.isEmpty)
+                    .disabled(viewModel.selectedIDs.isEmpty || viewModel.isSaving)
                 }
                 .padding(.horizontal, 24)
             }
+        }
+        .task {
+            await viewModel.loadPreferences()
         }
     }
 }
 
 #Preview {
-    PreferencesView(isPresented: .constant(true))
+    PreferencesView(isPresented: .constant(true), viewModel: PreferencesViewModel())
         .environmentObject(SessionStore())
 }
 

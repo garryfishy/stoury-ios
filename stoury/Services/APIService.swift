@@ -23,12 +23,16 @@ enum APIError: Error, LocalizedError {
         case .invalidResponse:
             return "The server response was invalid."
         case .serverError(let statusCode):
-            if statusCode == 401 || statusCode == 422 {
-                return "Server returned status code \(statusCode)."
+            switch statusCode {
+            case 401, 422:
+                return "Email atau kata sandi salah."
+            case 409:
+                return "Email sudah terdaftar."
+            default:
+                return "Terjadi kesalahan pada server."
             }
-            return "Server returned status code \(statusCode)."
-        case .serverErrorWithMessage(let statusCode, let message):
-            return "Server returned status code \(statusCode): \(message)"
+        case .serverErrorWithMessage(_, let message):
+            return message
         case .decodingError:
             return "Failed to read server data."
         case .encodingError:
@@ -197,6 +201,30 @@ final class APIService {
         }
     }
 
+    func register(name: String, email: String, password: String) async throws -> AuthSession {
+        guard let url = URL(string: "\(baseURL)/auth/register") else {
+            throw APIError.invalidURL
+        }
+
+        let registerRequest = RegisterRequest(name: name, email: email, password: password)
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(registerRequest)
+        printRequestBody(request)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try validateSuccessfulResponse(data: data, response: response)
+
+        do {
+            let decoded = try JSONDecoder().decode(APIResponse<AuthSession>.self, from: data)
+            return decoded.data
+        } catch {
+            throw APIError.decodingError
+        }
+    }
+
     func getDashboard() async throws -> DashboardHome {
         guard let url = URL(string: "\(baseURL)/dashboard/home") else {
             throw APIError.invalidURL
@@ -306,6 +334,46 @@ final class APIService {
         } catch {
             throw APIError.decodingError
         }
+    }
+
+    func updatePreferences(categoryIds: [UUID]) async throws -> [Preference] {
+        guard let url = URL(string: "\(baseURL)/preferences/me") else {
+            throw APIError.invalidURL
+        }
+
+        let body = PreferencesUpdateRequest(categoryIds: categoryIds)
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "PUT"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(body)
+        printRequestBody(request)
+
+        let data = try await authorizedData(for: request)
+
+        do {
+            let decoded = try JSONDecoder().decode(APIResponse<[Preference]>.self, from: data)
+            return decoded.data
+        } catch {
+            throw APIError.decodingError
+        }
+    }
+
+    func logout(refreshToken: String) async throws {
+        guard let url = URL(string: "\(baseURL)/auth/logout") else {
+            throw APIError.invalidURL
+        }
+
+        let body = LogoutRequest(refreshToken: refreshToken)
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(body)
+        printRequestBody(request)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try validateSuccessfulResponse(data: data, response: response)
     }
 
     func getDestinations(page: Int = 1, limit: Int = 100) async throws -> [DashboardDestination] {
