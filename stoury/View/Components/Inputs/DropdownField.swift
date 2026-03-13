@@ -6,8 +6,7 @@
 //
 
 import SwiftUI
-
-import SwiftUI
+import UIKit
 
 struct DropdownField: View {
     let title: String
@@ -31,12 +30,22 @@ struct DropdownField: View {
         selectedValue?.isEmpty ?? true
     }
 
+    private func dismissKeyboard() {
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
                 .font(.headline)
 
             Button {
+                dismissKeyboard()
                 withAnimation(.easeInOut(duration: 0.2)) {
                     isExpanded.toggle()
                 }
@@ -69,6 +78,7 @@ struct DropdownField: View {
                     VStack(spacing: 0) {
                         ForEach(options, id: \.self) { option in
                             Button {
+                                dismissKeyboard()
                                 selectedValue = option
                                 withAnimation(.easeInOut(duration: 0.2)) {
                                     isExpanded = false

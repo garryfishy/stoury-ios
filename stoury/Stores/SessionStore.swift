@@ -14,6 +14,14 @@ final class SessionStore: ObservableObject {
     @Published var needsPreferences = false
 
     private let hasCompletedPreferencesKeyPrefix = "stoury.hasCompletedPreferences."
+    private let persistence: SessionPersisting
+
+    init(persistence: SessionPersisting? = nil) {
+        let resolvedPersistence = persistence ?? SessionPersistenceService()
+        self.persistence = resolvedPersistence
+        self.session = resolvedPersistence.loadSession()
+        self.needsPreferences = shouldShowPreferences(for: self.session?.user)
+    }
 
     var isAuthenticated: Bool {
         session != nil
@@ -31,14 +39,32 @@ final class SessionStore: ObservableObject {
         session?.accessToken
     }
 
+    var refreshToken: String? {
+        session?.refreshToken
+    }
+
     func setSession(_ session: AuthSession) {
         self.session = session
         needsPreferences = shouldShowPreferences(for: session.user)
+        persistence.saveSession(session)
+    }
+
+    func updateSessionTokens(accessToken: String, refreshToken: String?) {
+        guard let session else { return }
+
+        let updatedSession = AuthSession(
+            accessToken: accessToken,
+            refreshToken: refreshToken ?? session.refreshToken,
+            user: session.user
+        )
+
+        setSession(updatedSession)
     }
 
     func clearSession() {
         self.session = nil
         needsPreferences = false
+        persistence.clearSession()
     }
 
     func markPreferencesCompleted(for user: User?) {
@@ -56,6 +82,6 @@ final class SessionStore: ObservableObject {
     }
 
     private func userKey(for user: User) -> String {
-        return user.id.uuidString
+        user.id.uuidString
     }
 }

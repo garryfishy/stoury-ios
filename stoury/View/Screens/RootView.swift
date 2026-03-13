@@ -11,7 +11,7 @@ struct RootView: View {
     @EnvironmentObject var sessionStore: SessionStore
     @State private var selectedTab: AppTab = .trips
     @State private var searchText = ""
-   
+
     var body: some View {
         if sessionStore.isAuthenticated {
             if sessionStore.needsPreferences {
@@ -21,10 +21,8 @@ struct RootView: View {
                     if selectedTab == .dashboard {
                         HStack {
                             SearchInputField(text: $searchText)
-
                         }
                         .padding(8)
-
                     }
 
                     Group {
@@ -32,7 +30,7 @@ struct RootView: View {
                         case .dashboard:
                             ContentView(sessionStore: sessionStore)
                         case .trips:
-                            Text("Trips")
+                            MyTripsView(sessionStore: sessionStore)
                         case .forum:
                             Text("Forum")
                         case .profile:

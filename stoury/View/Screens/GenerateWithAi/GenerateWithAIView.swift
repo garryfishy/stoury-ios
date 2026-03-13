@@ -1,40 +1,99 @@
 import SwiftUI
+import UIKit
 
 struct GenerateWithAIView: View {
-    @State private var tripName: String = ""
-    @State private var options: [String] = ["Batam", "Yogyakarta", "Bali"]
-    @State private var selectedCity: String? = ""
+    @StateObject private var viewModel: TripGeneratorViewModel
+    @State private var tripName = ""
+    @State private var selectedCity: String? = nil
     @State private var startDate: Date? = nil
     @State private var endDate: Date? = nil
-    @State private var budget: String = ""
-    @State private var usePreference: Bool = false
-    @State private var selectedPreferences: Set<String> = []
-    
-    private let preferences = [
-        "Populer",
-        "Makanan",
-        "Belanja",
-        "Sejarah"
-    ]
+    @State private var budget = ""
+    @State private var usePreference = false
+    @State private var selectedPreferenceIDs: Set<UUID> = []
+    @State private var generatedTripRoute: GeneratedTripRoute?
 
-    let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 4)
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 4)
+    private let sessionStore: SessionStore
 
-    func doSomething() {}
-    
-    private func togglePreference(_ preference: String) {
-        if selectedPreferences.contains(preference) {
-            selectedPreferences.remove(preference)
-        } else {
-            selectedPreferences.insert(preference)
-        }
+    init(sessionStore: SessionStore) {
+        self.sessionStore = sessionStore
+        _viewModel = StateObject(
+            wrappedValue: TripGeneratorViewModel(sessionStore: sessionStore)
+        )
     }
-    
+
     private var isFormValid: Bool {
         !tripName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         !(selectedCity?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true) &&
         startDate != nil &&
         endDate != nil &&
         !budget.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func dismissKeyboard() {
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
+    }
+
+    private func togglePreference(_ preference: Preference) {
+        if selectedPreferenceIDs.contains(preference.id) {
+            selectedPreferenceIDs.remove(preference.id)
+        } else {
+            selectedPreferenceIDs.insert(preference.id)
+        }
+    }
+
+    private func applyAccountPreferencesSelection() {
+        let matchedIDs = viewModel.matchedAccountPreferenceIDs()
+
+        guard !matchedIDs.isEmpty else {
+            selectedPreferenceIDs.removeAll()
+            usePreference = false
+            viewModel.preferenceErrorMessage = "Preferensi akun belum cocok dengan master data."
+            return
+        }
+
+        viewModel.preferenceErrorMessage = nil
+        selectedPreferenceIDs = matchedIDs
+    }
+
+    private func preferenceAssetName(for preference: Preference) -> String {
+        switch preference.slug.lowercased() {
+        case "popular":
+            return "populer"
+        case "food":
+            return "makanan"
+        case "shopping":
+            return "belanja"
+        case "history":
+            return "sejarah"
+        default:
+            return preference.name.lowercased()
+        }
+    }
+
+    private func submitGeneration() {
+        dismissKeyboard()
+
+        Task {
+            let route = await viewModel.generateTrip(
+                title: tripName,
+                destinationName: selectedCity,
+                startDate: startDate,
+                endDate: endDate,
+                budget: budget,
+                useAccountPreferences: usePreference,
+                selectedPreferenceIDs: selectedPreferenceIDs
+            )
+
+            if let route {
+                generatedTripRoute = route
+            }
+        }
     }
 
     var body: some View {
@@ -58,7 +117,7 @@ struct GenerateWithAIView: View {
                             DropdownField(
                                 title: "Lokasi",
                                 placeholder: "Pilih lokasi",
-                                options: options,
+                                options: viewModel.destinationNames,
                                 selectedValue: $selectedCity,
                                 leadingSystemImage: "magnifyingglass"
                             )
@@ -69,34 +128,51 @@ struct GenerateWithAIView: View {
                                 placeholder: "Pilih Tanggal",
                                 startDate: $startDate,
                                 endDate: $endDate,
-                                leadingSystemImage: "calendar"
+                                leadingSystemImage: "calendar",
+                                blockPreviousDates: true
                             )
+                            .zIndex(20)
 
                             InputField(
                                 title: "Budget",
                                 placeholder: "Masukkan Budget",
                                 text: $budget,
-                                leadingSystemImage: "dollarsign.circle"
+                                leadingSystemImage: "dollarsign.circle",
+                                keyboardType: .numberPad,
+                                textContentType: .oneTimeCode,
+                                numbersOnly: true
                             )
 
                             VStack(alignment: .leading, spacing: 12) {
                                 Text("Preferensi")
                                     .font(.system(size: 16, weight: .bold))
-                                
+
                                 Toggle(isOn: $usePreference) {
                                     Text("Gunakan preferensi akun saya")
                                         .font(.system(size: 15))
                                 }
                                 .toggleStyle(Checkbox())
-                                
+
+                                if viewModel.isLoadingInitialData && viewModel.masterPreferences.isEmpty {
+                                    ProgressView("Memuat preferensi...")
+                                        .font(.system(size: 12))
+                                }
+
+                                if let preferenceErrorMessage = viewModel.preferenceErrorMessage {
+                                    Text(preferenceErrorMessage)
+                                        .font(.system(size: 12))
+                                        .foregroundStyle(.red)
+                                }
+
                                 LazyVGrid(columns: columns, spacing: 12) {
-                                    ForEach(preferences, id: \.self) { preference in
-                                        let isSelected = selectedPreferences.contains(preference)
-                                        
+                                    ForEach(viewModel.masterPreferences) { preference in
+                                        let isSelected = selectedPreferenceIDs.contains(preference.id)
+
                                         VStack(spacing: 8) {
-                                            Image(preference.lowercased())
+                                            Image(preferenceAssetName(for: preference))
                                                 .resizable()
                                                 .scaledToFill()
+                                                .scaleEffect(2)
                                                 .aspectRatio(1, contentMode: .fit)
                                                 .clipShape(RoundedRectangle(cornerRadius: 10))
                                                 .overlay {
@@ -106,8 +182,8 @@ struct GenerateWithAIView: View {
                                                             lineWidth: 2
                                                         )
                                                 }
-                                            
-                                            Text(preference)
+
+                                            Text(preference.name)
                                                 .font(.system(size: 14, weight: .medium))
                                                 .multilineTextAlignment(.center)
                                         }
@@ -117,24 +193,39 @@ struct GenerateWithAIView: View {
                                         }
                                     }
                                 }
-                            }}
+                            }
+                        }
                         .padding(.horizontal, 16)
                         .padding(.top, 32)
                     }
+                    .simultaneousGesture(
+                        TapGesture().onEnded {
+                            dismissKeyboard()
+                        }
+                    )
+                    .zIndex(1)
 
-                    VStack {
+                    VStack(alignment: .leading, spacing: 10) {
+                        if let errorMessage = viewModel.errorMessage {
+                            Text(errorMessage)
+                                .font(.system(size: 12))
+                                .foregroundStyle(.red)
+                        }
+
                         StouryButton(
                             title: "Buat Rencana Perjalanan",
                             style: .primary,
-                            isDisabled: !isFormValid
+                            isDisabled: !isFormValid || viewModel.isGenerating
                         ) {
-                            doSomething()
+                            submitGeneration()
                         }
                         .frame(maxWidth: .infinity)
                     }
                     .padding(.top, 14)
                     .padding(.bottom, 20)
                     .background(.clear)
+                    .padding(.horizontal, 16)
+                    .zIndex(0)
                 }
                 .background(.white)
                 .clipShape(
@@ -143,13 +234,40 @@ struct GenerateWithAIView: View {
                         topTrailingRadius: 28
                     )
                 )
-                .background(.white)
                 .ignoresSafeArea(edges: .bottom)
             }
         }
+        .simultaneousGesture(
+            TapGesture().onEnded {
+                dismissKeyboard()
+            }
+        )
+        .task {
+            await viewModel.loadInitialData()
+
+            if selectedCity == nil || selectedCity?.isEmpty == true {
+                selectedCity = viewModel.defaultDestinationName
+            }
+        }
+        .onChange(of: usePreference) { _, newValue in
+            viewModel.preferenceErrorMessage = nil
+
+            guard newValue else { return }
+            applyAccountPreferencesSelection()
+        }
+        .overlay {
+            if viewModel.isGenerating {
+                GenerateWithAILoadingView()
+                    .transition(.opacity)
+            }
+        }
+        .allowsHitTesting(!viewModel.isGenerating)
+        .fullScreenCover(item: $generatedTripRoute) { route in
+            GeneratedItineraryView(sessionStore: sessionStore, route: route)
+        }
     }
 
-    var header: some View {
+    private var header: some View {
         ZStack(alignment: .top) {
             Color("PrimaryOrange")
                 .frame(height: 80)
@@ -172,23 +290,13 @@ struct GenerateWithAIView: View {
 
             HStack {
                 BackButton()
-
                 Spacer()
             }
             .padding(.top, 8)
         }
     }
-
-    func categoryTitle(_ index: Int) -> String {
-        switch index {
-        case 0: return "Populer"
-        case 1: return "Makanan"
-        case 2: return "Belanja"
-        default: return "Sejarah"
-        }
-    }
 }
+
 #Preview {
-  GenerateWithAIView()
+    GenerateWithAIView(sessionStore: SessionStore())
 }
-

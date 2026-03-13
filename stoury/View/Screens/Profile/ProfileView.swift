@@ -9,7 +9,6 @@ import SwiftUI
 
 struct ProfileView: View {
     @EnvironmentObject private var sessionStore: SessionStore
-    @State private var selectedTab: AppTab = .profile
 
     private var displayName: String {
         sessionStore.currentUser?.name ?? "Pengguna"
@@ -22,7 +21,6 @@ struct ProfileView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 50) {
-//                Spacer()
                 VStack(spacing: 24) {
                     ProfileCard(
                         name: displayName,
@@ -51,4 +49,3 @@ struct ProfileView: View {
     ProfileView()
         .environmentObject(SessionStore())
 }
-
