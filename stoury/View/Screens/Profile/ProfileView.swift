@@ -2,6 +2,53 @@
 //  ProfileView.swift
 //  stoury
 //
-//  Created by Garry Agassi on 11/03/26.
+//  Created by Muhammad Arfian Praniza on 10/03/26.
 //
+
+import SwiftUI
+
+struct ProfileView: View {
+    @EnvironmentObject private var sessionStore: SessionStore
+    @State private var selectedTab: AppTab = .profile
+
+    private var displayName: String {
+        sessionStore.currentUser?.name ?? "Pengguna"
+    }
+
+    private var displayEmail: String {
+        sessionStore.currentUser?.email ?? "-"
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 50) {
+//                Spacer()
+                VStack(spacing: 24) {
+                    ProfileCard(
+                        name: displayName,
+                        email: displayEmail
+                    )
+
+                    VStack(spacing: 12) {
+                        StouryButton(title: "Profil", systemImage: "person", style: .tertiary) {}
+                        StouryButton(title: "Keluar", systemImage: "arrow.turn.up.left", style: .tertiary) {
+                            sessionStore.clearSession()
+                        }
+                    }
+                }
+                .padding(.top, 80)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            }
+            .padding(.horizontal, 24)
+            .background(Color.white)
+            .navigationTitle("Profil")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+}
+
+#Preview {
+    ProfileView()
+        .environmentObject(SessionStore())
+}
 

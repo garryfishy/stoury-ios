@@ -10,74 +10,117 @@ import SwiftUI
 struct LoginView: View {
     @EnvironmentObject private var sessionStore: SessionStore
     @StateObject private var viewModel: LoginViewModel
-
+    @State private var isRegisterPresented = false
+    
     init(sessionStore: SessionStore? = nil) {
         let store = sessionStore ?? SessionStore()
         _viewModel = StateObject(
             wrappedValue: LoginViewModel(sessionStore: store)
         )
     }
-
+    
+    private var primaryOrange: Color {
+        Color("PrimaryOrange")
+    }
+    
     var body: some View {
-        VStack(spacing: 20) {
-            Text("Login")
-                .font(.title)
-                .fontWeight(.semibold)
-
-            TextField("Email", text: $viewModel.email)
-                .textInputAutocapitalization(.never)
-                .keyboardType(.emailAddress)
-                .autocorrectionDisabled()
-                .padding()
-                .background(Color(.systemGray6))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-
-            SecureField("Password", text: $viewModel.password)
-                .padding()
-                .background(Color(.systemGray6))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-
-            if let errorMessage = viewModel.errorMessage {
-                Text(errorMessage)
-                    .foregroundStyle(.red)
-                    .font(.footnote)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            Button {
-                Task {
-                    await viewModel.login()
+        NavigationStack {
+            ZStack {
+                primaryOrange
+                    .ignoresSafeArea()
+                
+                VStack {
+                    Spacer()
+                    
+                    VStack(spacing: 16) {
+                        VStack(spacing: 6) {
+                            Text("Masuk")
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundColor(.black)
+                            
+                            Text("Masuk ke akun Anda untuk melanjutkan")
+                                .font(.system(size: 12, weight: .regular))
+                                .foregroundColor(.gray)
+                        }
+                        
+                        VStack(spacing: 10) {
+                            InputFieldAuth(
+                                title: "E-mail",
+                                systemImage: "envelope",
+                                text: $viewModel.email,
+                                keyboardType: .emailAddress
+                            )
+                            
+                            InputFieldAuth(
+                                title: "Kata sandi",
+                                systemImage: "lock",
+                                text: $viewModel.password,
+                                isSecure: true
+                            )
+                        }
+                        
+                        HStack {
+                            Spacer()
+                            Button("Lupa sandi?") {
+                                // TODO: navigate to forgot password
+                            }
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.blue)
+                        }
+                        
+                        if let errorMessage = viewModel.errorMessage {
+                            Text(errorMessage)
+                                .font(.system(size: 12, weight: .regular))
+                                .foregroundColor(.red)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        
+                        Button {
+                            Task {
+                                await viewModel.login()
+                            }
+                        } label: {
+                            Text(viewModel.isLoading ? "MEMUAT..." : "LANJUTKAN")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 44)
+                                .background(Color.blue)
+                                .clipShape(Capsule())
+                        }
+                        .disabled(viewModel.isLoading)
+                        
+                        HStack(spacing: 4) {
+                            Text("Belum memiliki akun?")
+                                .font(.system(size: 11, weight: .regular))
+                                .foregroundColor(.gray)
+                            
+                            Button("Buat akun") {
+                                isRegisterPresented = true
+                            }
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(primaryOrange)
+                        }
+                        
+                        Text("Dengan menekan Lanjutkan,\nAnda menyetujui Syarat & Ketentuan serta Kebijakan Privasi kami.")
+                            .font(.system(size: 9, weight: .regular))
+                            .foregroundColor(.gray)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(20)
+                    .background(Color.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    .padding(.horizontal, 24)
+                    
+                    Spacer()
                 }
-            } label: {
-                Text(viewModel.isLoading ? "Logging in..." : "Login")
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.orange)
-                    .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
             }
-            .disabled(viewModel.isLoading)
-            
-            Button("Mock Login") {
-                sessionStore.setSession(
-                    AuthSession(
-                        accessToken: "debug-access-token",
-                        refreshToken: "debug-refresh-token",
-                        user: User(
-                            id: UUID(),
-                            name: "Preview User",
-                            email: "preview@stoury.co",
-                            roles: ["user"]
-                        )
-                    )
-                )
+            .navigationDestination(isPresented: $isRegisterPresented) {
+                RegisterView(isPresented: $isRegisterPresented)
             }
-            .font(.footnote)
         }
-        .padding(24)
     }
 }
-
 #Preview {
     LoginView(sessionStore: SessionStore())
         .environmentObject(SessionStore())

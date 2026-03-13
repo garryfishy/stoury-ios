@@ -17,6 +17,7 @@ struct StouryButton: View {
     enum Style {
         case secondary
         case primary
+        case tertiary
     }
 
     init(
@@ -35,15 +36,20 @@ struct StouryButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 10) {
-                if let systemImage {
-                    Image(systemName: systemImage)
-                        .font(.system(size: 16, weight: .semibold))
+            ZStack {
+                HStack {
+                    if let systemImage {
+                        Image(systemName: systemImage)
+                            .font(.system(size: 18, weight: .semibold))
+                    }
+
+                    Spacer(minLength: 0)
                 }
 
                 Text(title)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 18, weight: .semibold))
             }
+            .padding(.horizontal, 20)
             .frame(maxWidth: .infinity)
             .frame(height: 52)
         }
@@ -73,6 +79,10 @@ struct StouryButton: View {
         Color.clear
     }
 
+    private var tertiaryBackgroundColor: Color {
+        Color(red: 1.0, green: 0.97, blue: 0.94)
+    }
+
     private var foregroundColor: Color {
         if isDisabled {
             return disabledForegroundColor
@@ -83,6 +93,8 @@ struct StouryButton: View {
             return .gray
         case .primary:
             return .white
+        case .tertiary:
+            return primaryColor
         }
     }
 
@@ -96,6 +108,8 @@ struct StouryButton: View {
             return .clear
         case .primary:
             return primaryColor
+        case .tertiary:
+            return tertiaryBackgroundColor
         }
     }
 
@@ -109,6 +123,8 @@ struct StouryButton: View {
             return .black
         case .primary:
             return .black
+        case .tertiary:
+            return primaryColor
         }
     }
 }
@@ -117,6 +133,7 @@ struct StouryButton: View {
     VStack(spacing: 12) {
         StouryButton(title: "Tentukan sendiri", style: .secondary) {}
         StouryButton(title: "Buat rencana dengan AI", systemImage: "sparkles", style: .primary) {}
+        StouryButton(title: "Profil", systemImage: "person", style: .tertiary) {}
         StouryButton(title: "Disabled", systemImage: "sparkles", style: .primary, isDisabled: true) {}
     }
     .padding()

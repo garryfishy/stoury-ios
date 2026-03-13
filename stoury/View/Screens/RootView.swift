@@ -14,36 +14,39 @@ struct RootView: View {
    
     var body: some View {
         if sessionStore.isAuthenticated {
-            VStack(spacing: 0) {
-                if selectedTab == .dashboard {
-                    HStack {
-                        SearchInputField(text: $searchText)
+            if sessionStore.needsPreferences {
+                PreferencesView(isPresented: $sessionStore.needsPreferences)
+            } else {
+                VStack(spacing: 0) {
+                    if selectedTab == .dashboard {
+                        HStack {
+                            SearchInputField(text: $searchText)
+
+                        }
+                        .padding(8)
 
                     }
-                    .padding(8)
 
-                }
-
-                Group {
-                    switch selectedTab {
-                    case .dashboard:
-                        ContentView(sessionStore: sessionStore)
-                    case .trips:
-                       Text("Trips")
-                    case .forum:
-                        Text("Forum")
-                    case .profile:
-                        Text("Profil")
+                    Group {
+                        switch selectedTab {
+                        case .dashboard:
+                            ContentView(sessionStore: sessionStore)
+                        case .trips:
+                            Text("Trips")
+                        case .forum:
+                            Text("Forum")
+                        case .profile:
+                            ProfileView()
+                        }
                     }
-                }
-                
-                Spacer()
 
-                BottomNavbar(selectedTab: $selectedTab)
+                    Spacer()
+
+                    BottomNavbar(selectedTab: $selectedTab)
+                }
             }
         } else {
-//            LoginView(sessionStore: sessionStore)
-            GenerateWithAIView()
+            LoginView(sessionStore: sessionStore)
         }
     }
 }
