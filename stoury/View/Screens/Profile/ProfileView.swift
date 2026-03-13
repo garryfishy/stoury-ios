@@ -30,7 +30,9 @@ struct ProfileView: View {
                     VStack(spacing: 12) {
                         StouryButton(title: "Profil", systemImage: "person", style: .tertiary) {}
                         StouryButton(title: "Keluar", systemImage: "arrow.turn.up.left", style: .tertiary) {
-                            sessionStore.clearSession()
+                            Task {
+                                await logout()
+                            }
                         }
                     }
                 }
@@ -42,6 +44,15 @@ struct ProfileView: View {
             .navigationTitle("Profil")
             .navigationBarTitleDisplayMode(.inline)
         }
+    }
+
+    private func logout() async {
+        if let refreshToken = sessionStore.refreshToken {
+            let apiService = APIService(sessionStore: sessionStore)
+            _ = try? await apiService.logout(refreshToken: refreshToken)
+        }
+
+        sessionStore.clearSession()
     }
 }
 

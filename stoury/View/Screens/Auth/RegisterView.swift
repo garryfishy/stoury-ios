@@ -8,15 +8,17 @@
 import SwiftUI
 struct RegisterView: View {
     @Binding var isPresented: Bool
+    @StateObject private var viewModel: RegisterViewModel
     @State private var name = ""
     @State private var email = ""
     @State private var password = ""
     @State private var errorMessage: String? = nil
-    @State private var isSuccess = false
 
-    init(isPresented: Binding<Bool> = .constant(true)) {
+    init(isPresented: Binding<Bool> = .constant(true), viewModel: RegisterViewModel? = nil) {
         self._isPresented = isPresented
+        _viewModel = StateObject(wrappedValue: viewModel ?? RegisterViewModel())
     }
+
 
     private var primaryOrange: Color {
         Color("PrimaryOrange")
@@ -62,18 +64,27 @@ struct RegisterView: View {
                             isSecure: true
                         )
                     }
-                    .onChange(of: name) { _, _ in errorMessage = nil }
-                    .onChange(of: email) { _, _ in errorMessage = nil }
-                    .onChange(of: password) { _, _ in errorMessage = nil }
+                    .onChange(of: name) { _, _ in
+                        errorMessage = nil
+                        viewModel.errorMessage = nil
+                    }
+                    .onChange(of: email) { _, _ in
+                        errorMessage = nil
+                        viewModel.errorMessage = nil
+                    }
+                    .onChange(of: password) { _, _ in
+                        errorMessage = nil
+                        viewModel.errorMessage = nil
+                    }
 
-                    if let errorMessage {
+                    if let errorMessage = viewModel.errorMessage ?? errorMessage {
                         Text(errorMessage)
                             .font(.system(size: 12, weight: .regular))
                             .foregroundColor(.red)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
 
-                    if isSuccess {
+                    if viewModel.isSuccess {
                         VStack(spacing: 8) {
                             Text("Akun berhasil dibuat.")
                                 .font(.system(size: 12, weight: .regular))
@@ -128,10 +139,15 @@ struct RegisterView: View {
                             }
 
                             errorMessage = nil
-                            // TODO: register action
-                            isSuccess = true
+                            Task {
+                                await viewModel.register(
+                                    name: trimmedName,
+                                    email: trimmedEmail,
+                                    password: trimmedPassword
+                                )
+                            }
                         } label: {
-                            Text("DAFTAR")
+                            Text(viewModel.isLoading ? "MEMUAT..." : "DAFTAR")
                                 .font(.system(size: 14, weight: .bold))
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
@@ -139,6 +155,7 @@ struct RegisterView: View {
                                 .background(Color.blue)
                                 .clipShape(Capsule())
                         }
+                        .disabled(viewModel.isLoading)
 
                         HStack(spacing: 4) {
                             Text("Sudah memiliki akun?")
@@ -167,6 +184,6 @@ struct RegisterView: View {
 }
 
 #Preview {
-    RegisterView(isPresented: .constant(true))
+    RegisterView(isPresented: .constant(true), viewModel: RegisterViewModel())
 }
 
