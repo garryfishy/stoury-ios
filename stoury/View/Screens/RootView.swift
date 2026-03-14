@@ -10,7 +10,6 @@ import SwiftUI
 struct RootView: View {
     @EnvironmentObject var sessionStore: SessionStore
     @State private var selectedTab: AppTab = .trips
-    @State private var searchText = ""
 
     var body: some View {
         if sessionStore.isAuthenticated {
@@ -18,13 +17,6 @@ struct RootView: View {
                 PreferencesView(isPresented: $sessionStore.needsPreferences)
             } else {
                 VStack(spacing: 0) {
-                    if selectedTab == .dashboard {
-                        HStack {
-                            SearchInputField(text: $searchText)
-                        }
-                        .padding(8)
-                    }
-
                     Group {
                         switch selectedTab {
                         case .dashboard:

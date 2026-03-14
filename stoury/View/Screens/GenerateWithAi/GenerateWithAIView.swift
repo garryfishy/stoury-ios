@@ -3,6 +3,7 @@ import UIKit
 
 struct GenerateWithAIView: View {
     @StateObject private var viewModel: TripGeneratorViewModel
+    @Environment(\.dismiss) private var dismiss
     @State private var tripName = ""
     @State private var selectedCity: String? = nil
     @State private var startDate: Date? = nil
@@ -14,9 +15,11 @@ struct GenerateWithAIView: View {
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 4)
     private let sessionStore: SessionStore
+    private let onGeneratedTrip: ((GeneratedTripRoute) -> Void)?
 
-    init(sessionStore: SessionStore) {
+    init(sessionStore: SessionStore, onGeneratedTrip: ((GeneratedTripRoute) -> Void)? = nil) {
         self.sessionStore = sessionStore
+        self.onGeneratedTrip = onGeneratedTrip
         _viewModel = StateObject(
             wrappedValue: TripGeneratorViewModel(sessionStore: sessionStore)
         )
@@ -91,7 +94,11 @@ struct GenerateWithAIView: View {
             )
 
             if let route {
-                generatedTripRoute = route
+                if let onGeneratedTrip {
+                    onGeneratedTrip(route)
+                } else {
+                    generatedTripRoute = route
+                }
             }
         }
     }
@@ -255,6 +262,9 @@ struct GenerateWithAIView: View {
             guard newValue else { return }
             applyAccountPreferencesSelection()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .returnToHomeRequested)) { _ in
+            dismiss()
+        }
         .overlay {
             if viewModel.isGenerating {
                 GenerateWithAILoadingView()
@@ -262,6 +272,8 @@ struct GenerateWithAIView: View {
             }
         }
         .allowsHitTesting(!viewModel.isGenerating)
+        .navigationBarBackButtonHidden(true)
+        .enableSwipeBack()
         .fullScreenCover(item: $generatedTripRoute) { route in
             GeneratedItineraryView(sessionStore: sessionStore, route: route)
         }

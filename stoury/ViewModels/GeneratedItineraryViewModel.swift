@@ -34,6 +34,7 @@ final class GeneratedItineraryViewModel: ObservableObject {
             itinerary = try await apiService.getTripItinerary(tripId: tripId)
         } catch {
             errorMessage = error.localizedDescription
+            print("GeneratedItineraryViewModel.load failed for trip \(tripId.uuidString):", error)
         }
     }
 }

@@ -9,31 +9,45 @@ import SwiftUI
 import MapKit
 
 struct MapPreview: View {
-    let position = MapCameraPosition.region(
-        MKCoordinateRegion(
-            center: CLLocationCoordinate2D(latitude: 1.1854, longitude: 104.1017),
-            span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
-        )
-    )
-    
-    let coordinate = CLLocationCoordinate2D(
-        latitude: 1.1854,
-        longitude: 104.1017
-    )
+    let title: String
+    let latitude: Double
+    let longitude: Double
 
+    @Environment(\.openURL) private var openURL
+
+    private var coordinate: CLLocationCoordinate2D {
+        CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+    }
+
+    private var position: MapCameraPosition {
+        .region(
+            MKCoordinateRegion(
+                center: coordinate,
+                span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+            )
+        )
+    }
+
+    private var mapsURL: URL? {
+        var components = URLComponents(string: "http://maps.apple.com/")
+        components?.queryItems = [
+            URLQueryItem(name: "ll", value: "\(latitude),\(longitude)"),
+            URLQueryItem(name: "q", value: title)
+        ]
+        return components?.url
+    }
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             Map(initialPosition: position){
-                Marker("Nongsa Digital Park", coordinate: coordinate)
-                
+                Marker(title, coordinate: coordinate)
             }
             .mapStyle(.imagery)
             .frame(height: 180)
             
             Button {
-            print("Something")
-                
+                guard let mapsURL else { return }
+                openURL(mapsURL)
             } label: {
                 HStack {
                     Image("ic-direction")
@@ -45,9 +59,11 @@ struct MapPreview: View {
                 .padding(.horizontal, 16)
 
             }
-
-
-            
+            .buttonStyle(.plain)
         }
     }
+}
+
+#Preview {
+    MapPreview(title: "Nongsa Digital Park", latitude: 1.1854, longitude: 104.1017)
 }

@@ -19,6 +19,7 @@ final class LoginViewModel: ObservableObject {
     func login() async {
         guard !email.isEmpty, !password.isEmpty else {
             errorMessage = "Email and password cannot be empty."
+            print("LoginViewModel.login validation failed: empty email or password")
             return
         }
 
@@ -31,6 +32,7 @@ final class LoginViewModel: ObservableObject {
             sessionStore.setSession(session)
         } catch {
             errorMessage = error.localizedDescription
+            print("LoginViewModel.login failed:", error)
         }
     }
     

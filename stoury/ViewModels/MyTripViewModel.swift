@@ -11,7 +11,7 @@ import Combine
 @MainActor
 final class MyTripViewModel: ObservableObject {
     @Published private(set) var trips: [Trip] = []
-    @Published var isLoading = false
+    @Published var isLoading = true
     @Published var errorMessage: String?
 
     private let apiService: APIService
@@ -21,14 +21,40 @@ final class MyTripViewModel: ObservableObject {
     }
 
     func getTrips() async {
+        let shouldShowBlockingLoader = trips.isEmpty
         errorMessage = nil
-        isLoading = true
-        defer { isLoading = false }
+
+        if shouldShowBlockingLoader {
+            isLoading = true
+        }
+
+        defer {
+            if shouldShowBlockingLoader {
+                isLoading = false
+            }
+        }
 
         do {
             trips = try await apiService.getTrips()
         } catch {
+            if isCancellation(error) {
+                return
+            }
+
             errorMessage = error.localizedDescription
+            print("MyTripViewModel.getTrips failed:", error)
         }
+    }
+
+    private func isCancellation(_ error: Error) -> Bool {
+        if error is CancellationError {
+            return true
+        }
+
+        if let urlError = error as? URLError, urlError.code == .cancelled {
+            return true
+        }
+
+        return false
     }
 }

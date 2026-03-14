@@ -13,33 +13,42 @@ struct PopularCard: View {
     let title: String?
     let subtitle: String?
 
+    private var hasBadge: Bool {
+        guard let labelText else { return false }
+        return !labelText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     var body: some View {
         RoundedRectangle(cornerRadius: 8)
             .fill(Color.white)
-            .frame(width: 175, height: 175)
+            .frame(maxWidth: .infinity)
+            .frame(height: 175)
             .overlay {
                 if let imageURL {
                     AsyncImage(url: imageURL) { phase in
                         switch phase {
                         case .empty:
                             ProgressView()
-                                .frame(width: 175, height: 175)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                         case .success(let image):
                             image
                                 .resizable()
                                 .scaledToFill()
-                                .frame(width: 175, height: 175)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                         case .failure:
                             Color.gray.opacity(0.2)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                         @unknown default:
                             Color.gray.opacity(0.2)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
                         }
                     }
                 } else {
                     Color.gray.opacity(0.2)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
             .overlay(alignment: .bottom) {
@@ -64,14 +73,16 @@ struct PopularCard: View {
                 .padding(.bottom, 8)
             }
             .overlay(alignment: .topLeading) {
-                Text(labelText ?? "")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color("PrimaryOrange"))
-                    .cornerRadius(6)
-                    .padding(10)
+                if hasBadge {
+                    Text(labelText ?? "")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color("PrimaryOrange"))
+                        .cornerRadius(6)
+                        .padding(10)
+                }
             }
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)

@@ -62,6 +62,7 @@ final class TripGeneratorViewModel: ObservableObject {
         } catch {
             destinationOptions = []
             errorMessage = "Gagal memuat daftar lokasi."
+            print("TripGeneratorViewModel.loadInitialData failed to load destinations:", error)
         }
 
         do {
@@ -69,6 +70,7 @@ final class TripGeneratorViewModel: ObservableObject {
         } catch {
             masterPreferences = []
             preferenceErrorMessage = "Gagal memuat daftar preferensi."
+            print("TripGeneratorViewModel.loadInitialData failed to load master preferences:", error)
         }
 
         do {
@@ -78,6 +80,7 @@ final class TripGeneratorViewModel: ObservableObject {
             if preferenceErrorMessage == nil {
                 preferenceErrorMessage = "Gagal memuat preferensi akun."
             }
+            print("TripGeneratorViewModel.loadInitialData failed to load account preferences:", error)
         }
     }
 

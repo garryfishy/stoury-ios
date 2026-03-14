@@ -9,7 +9,6 @@ import SwiftUI
 
 struct ExploreMoreCard: View {
     let imageURL: URL?
-//    let labelText: String?
     let title: String?
 
     var body: some View {
@@ -22,23 +21,37 @@ struct ExploreMoreCard: View {
                         switch phase {
                         case .empty:
                             ProgressView()
-                                .frame(width: 175, height: 175)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                         case .success(let image):
                             image
                                 .resizable()
                                 .scaledToFill()
-                                .frame(width: 200, height: 175)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                .clipped()
 
                         case .failure:
                             Color.gray.opacity(0.2)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                .overlay {
+                                    Image(systemName: "photo")
+                                        .font(.system(size: 24, weight: .medium))
+                                        .foregroundStyle(.gray.opacity(0.7))
+                                }
 
                         @unknown default:
                             Color.gray.opacity(0.2)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
                         }
                     }
                 } else {
                     Color.gray.opacity(0.2)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .overlay {
+                            Image(systemName: "photo")
+                                .font(.system(size: 24, weight: .medium))
+                                .foregroundStyle(.gray.opacity(0.7))
+                        }
                 }
             }
             .overlay(alignment: .bottom) {
@@ -56,21 +69,7 @@ struct ExploreMoreCard: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
             }
-//            .overlay(alignment: .topLeading) {
-//                Text(labelText ?? "")
-//                    .font(.system(size: 10, weight: .bold))
-//                    .foregroundColor(.white)
-//                    .padding(.horizontal, 12)
-//                    .padding(.vertical, 6)
-//                    .background(Color("PrimaryOrange"))
-//                    .cornerRadius(6)
-//                    .padding(10)
-//            }
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
     }
 }
-
-//#Preview {
-//    ExploreMoreCard(imageURL: "", title: "Hello")
-//}

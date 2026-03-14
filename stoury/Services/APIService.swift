@@ -61,37 +61,130 @@ final class APIService {
         print("API request body:", bodyString)
     }
 
+    private func requestLabel(for request: URLRequest) -> String {
+        let method = request.httpMethod ?? "REQUEST"
+        let url = request.url?.absoluteString ?? "unknown-url"
+        return "\(method) \(url)"
+    }
+
+    private func printError(_ prefix: String, error: Error) {
+        print("\(prefix):", error.localizedDescription)
+        print("Raw error:", error)
+    }
+
+    private func printRawResponse(_ data: Data, prefix: String) {
+        guard let rawResponse = String(data: data, encoding: .utf8), !rawResponse.isEmpty else {
+            return
+        }
+
+        print("\(prefix):", rawResponse)
+    }
+
+    private func decodeEnvelope<T: Decodable>(
+        _ type: T.Type,
+        from data: Data,
+        context: String
+    ) throws -> T {
+        do {
+            let decoded = try JSONDecoder().decode(APIResponse<T>.self, from: data)
+            return decoded.data
+        } catch {
+            printError("API decoding failed for \(context)", error: error)
+            printRawResponse(data, prefix: "API raw response for \(context)")
+            throw APIError.decodingError
+        }
+    }
+
     private func applyAuthorization(to request: inout URLRequest) {
         guard let token = sessionStore.accessToken else { return }
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+    }
+
+    private func cacheResponseIfNeeded(data: Data, response: URLResponse, for request: URLRequest) {
+        guard request.httpMethod == "GET",
+              let httpResponse = response as? HTTPURLResponse,
+              200...299 ~= httpResponse.statusCode,
+              !data.isEmpty else {
+            return
+        }
+
+        let cachedResponse = CachedURLResponse(response: response, data: data)
+        URLCache.shared.storeCachedResponse(cachedResponse, for: request)
+    }
+
+    private func resolvedResponseData(
+        for request: URLRequest,
+        data: Data,
+        response: URLResponse
+    ) throws -> Data {
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+
+        if httpResponse.statusCode == 304 {
+            if let cachedResponse = URLCache.shared.cachedResponse(for: request) {
+                print("API cache hit for 304 response:", request.url?.absoluteString ?? "")
+                return cachedResponse.data
+            }
+
+            print("API received 304 without cached response for:", request.url?.absoluteString ?? "")
+            throw APIError.serverErrorWithMessage(
+                statusCode: 304,
+                message: "Resource not modified, but no cached response was available."
+            )
+        }
+
+        try validateSuccessfulResponse(data: data, response: response)
+        cacheResponseIfNeeded(data: data, response: response, for: request)
+        return data
     }
 
     private func authorizedData(for request: URLRequest) async throws -> Data {
         var request = request
         applyAuthorization(to: &request)
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await URLSession.shared.data(for: request)
+        } catch {
+            printError("API request failed for \(requestLabel(for: request))", error: error)
+            throw error
+        }
 
         if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 401 {
-            try await refreshSession()
+            print("API received 401 for:", requestLabel(for: request))
+            do {
+                try await refreshSession()
+            } catch {
+                printError("API refresh failed after 401 for \(requestLabel(for: request))", error: error)
+                throw error
+            }
 
             var retryRequest = request
             applyAuthorization(to: &retryRequest)
 
-            let (retryData, retryResponse) = try await URLSession.shared.data(for: retryRequest)
+            let retryData: Data
+            let retryResponse: URLResponse
+            do {
+                (retryData, retryResponse) = try await URLSession.shared.data(for: retryRequest)
+            } catch {
+                printError("API retry failed for \(requestLabel(for: retryRequest))", error: error)
+                throw error
+            }
             if let retryHTTPResponse = retryResponse as? HTTPURLResponse, retryHTTPResponse.statusCode == 401 {
+                print("API retry still unauthorized, clearing session for:", requestLabel(for: retryRequest))
                 sessionStore.clearSession()
             }
-            try validateSuccessfulResponse(data: retryData, response: retryResponse)
-            return retryData
+            return try resolvedResponseData(for: retryRequest, data: retryData, response: retryResponse)
         }
 
-        try validateSuccessfulResponse(data: data, response: response)
-        return data
+        return try resolvedResponseData(for: request, data: data, response: response)
     }
 
     private func refreshSession() async throws {
         if let refreshTask {
+            print("API refresh already in progress, awaiting existing task")
             try await refreshTask.value
             return
         }
@@ -110,6 +203,7 @@ final class APIService {
 
     private func performRefreshSession() async throws {
         guard let refreshToken = sessionStore.refreshToken else {
+            print("API refresh failed: missing refresh token")
             sessionStore.clearSession()
             throw APIError.serverErrorWithMessage(statusCode: 401, message: "Session expired. Please log in again.")
         }
@@ -124,11 +218,20 @@ final class APIService {
         request.httpBody = try JSONEncoder().encode(RefreshTokenRequest(refreshToken: refreshToken))
         printRequestBody(request)
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await URLSession.shared.data(for: request)
+        } catch {
+            printError("API refresh request failed", error: error)
+            sessionStore.clearSession()
+            throw error
+        }
 
         do {
             try validateSuccessfulResponse(data: data, response: response)
         } catch {
+            printError("API refresh validation failed", error: error)
             sessionStore.clearSession()
             throw error
         }
@@ -138,6 +241,7 @@ final class APIService {
             let refreshedUser = decoded.data.user ?? sessionStore.currentUser
 
             guard let refreshedUser else {
+                print("API refresh failed: missing refreshed user and no existing session user")
                 sessionStore.clearSession()
                 throw APIError.decodingError
             }
@@ -149,7 +253,10 @@ final class APIService {
                     user: refreshedUser
                 )
             )
+            print("API refresh succeeded")
         } catch {
+            printError("API refresh decoding failed", error: error)
+            printRawResponse(data, prefix: "API refresh raw response")
             sessionStore.clearSession()
             throw APIError.decodingError
         }
@@ -190,15 +297,16 @@ final class APIService {
         request.httpBody = try JSONEncoder().encode(loginRequest)
         printRequestBody(request)
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        try validateSuccessfulResponse(data: data, response: response)
-
+        let data: Data
+        let response: URLResponse
         do {
-            let decoded = try JSONDecoder().decode(APIResponse<AuthSession>.self, from: data)
-            return decoded.data
+            (data, response) = try await URLSession.shared.data(for: request)
         } catch {
-            throw APIError.decodingError
+            printError("API login request failed", error: error)
+            throw error
         }
+        try validateSuccessfulResponse(data: data, response: response)
+        return try decodeEnvelope(AuthSession.self, from: data, context: "login")
     }
 
     func register(name: String, email: String, password: String) async throws -> AuthSession {
@@ -235,15 +343,34 @@ final class APIService {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let data = try await authorizedData(for: request)
 
-        do {
-            let decoded = try JSONDecoder().decode(APIResponse<DashboardHome>.self, from: data)
-            return decoded.data
-        } catch {
-            print("Raw JSON:")
-            print(String(data: data, encoding: .utf8) ?? "Unable to print JSON")
-            print("Actual decoding error:", error)
-            throw error
+        return try decodeEnvelope(DashboardHome.self, from: data, context: "dashboard")
+    }
+
+    func searchDashboard(
+        query: String,
+        page: Int = 1,
+        limit: Int = 10
+    ) async throws -> DashboardSearchPayload {
+        guard var components = URLComponents(string: "\(baseURL)/dashboard/search") else {
+            throw APIError.invalidURL
         }
+
+        components.queryItems = [
+            URLQueryItem(name: "q", value: query),
+            URLQueryItem(name: "page", value: "\(page)"),
+            URLQueryItem(name: "limit", value: "\(limit)")
+        ]
+
+        guard let url = components.url else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let data = try await authorizedData(for: request)
+
+        return try decodeEnvelope(DashboardSearchPayload.self, from: data, context: "dashboard search")
     }
 
     func getTrips() async throws -> [Trip] {
@@ -256,12 +383,7 @@ final class APIService {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let data = try await authorizedData(for: request)
 
-        do {
-            let decoded = try JSONDecoder().decode(APIResponse<[Trip]>.self, from: data)
-            return decoded.data
-        } catch {
-            throw APIError.decodingError
-        }
+        return try decodeEnvelope([Trip].self, from: data, context: "trips")
     }
 
     func getTrip(tripId: UUID) async throws -> Trip {
@@ -274,12 +396,7 @@ final class APIService {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let data = try await authorizedData(for: request)
 
-        do {
-            let decoded = try JSONDecoder().decode(APIResponse<Trip>.self, from: data)
-            return decoded.data
-        } catch {
-            throw APIError.decodingError
-        }
+        return try decodeEnvelope(Trip.self, from: data, context: "trip detail")
     }
 
     func getTripItinerary(tripId: UUID) async throws -> TripItinerary {
@@ -292,12 +409,20 @@ final class APIService {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let data = try await authorizedData(for: request)
 
-        do {
-            let decoded = try JSONDecoder().decode(APIResponse<TripItinerary>.self, from: data)
-            return decoded.data
-        } catch {
-            throw APIError.decodingError
+        return try decodeEnvelope(TripItinerary.self, from: data, context: "trip itinerary")
+    }
+
+    func getAttraction(attractionId: UUID) async throws -> AttractionDetail {
+        guard let url = URL(string: "\(baseURL)/attractions/\(attractionId.uuidString)") else {
+            throw APIError.invalidURL
         }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let data = try await authorizedData(for: request)
+
+        return try decodeEnvelope(AttractionDetail.self, from: data, context: "attraction detail")
     }
 
     func getMyPreferences() async throws -> [Preference] {
@@ -310,12 +435,7 @@ final class APIService {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let data = try await authorizedData(for: request)
 
-        do {
-            let decoded = try JSONDecoder().decode(APIResponse<[Preference]>.self, from: data)
-            return decoded.data
-        } catch {
-            throw APIError.decodingError
-        }
+        return try decodeEnvelope([Preference].self, from: data, context: "account preferences")
     }
 
     func getPreferences() async throws -> [Preference] {
@@ -328,12 +448,7 @@ final class APIService {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let data = try await authorizedData(for: request)
 
-        do {
-            let decoded = try JSONDecoder().decode(APIResponse<[Preference]>.self, from: data)
-            return decoded.data
-        } catch {
-            throw APIError.decodingError
-        }
+        return try decodeEnvelope([Preference].self, from: data, context: "master preferences")
     }
 
     func updatePreferences(categoryIds: [UUID]) async throws -> [Preference] {
@@ -395,12 +510,33 @@ final class APIService {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let data = try await authorizedData(for: request)
 
-        do {
-            let decoded = try JSONDecoder().decode(APIResponse<[DashboardDestination]>.self, from: data)
-            return decoded.data
-        } catch {
-            throw APIError.decodingError
+        return try decodeEnvelope([DashboardDestination].self, from: data, context: "destinations")
+    }
+
+    func getAttractionsByDestination(
+        destinationSlug: String,
+        page: Int = 1,
+        limit: Int = 20
+    ) async throws -> DestinationAttractionsPayload {
+        guard var components = URLComponents(string: "\(baseURL)/destinations/\(destinationSlug)/attractions") else {
+            throw APIError.invalidURL
         }
+
+        components.queryItems = [
+            URLQueryItem(name: "page", value: "\(page)"),
+            URLQueryItem(name: "limit", value: "\(limit)")
+        ]
+
+        guard let url = components.url else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let data = try await authorizedData(for: request)
+
+        return try decodeEnvelope(DestinationAttractionsPayload.self, from: data, context: "destination attractions")
     }
 
     func createTrip(_ body: CreateTripRequest) async throws -> CreatedTrip {
@@ -415,12 +551,7 @@ final class APIService {
         printRequestBody(request)
         let data = try await authorizedData(for: request)
 
-        do {
-            let decoded = try JSONDecoder().decode(APIResponse<CreatedTrip>.self, from: data)
-            return decoded.data
-        } catch {
-            throw APIError.decodingError
-        }
+        return try decodeEnvelope(CreatedTrip.self, from: data, context: "create trip")
     }
 
     func generateAITripPreview(tripId: UUID) async throws -> GeneratedItineraryPreview {
@@ -433,12 +564,7 @@ final class APIService {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let data = try await authorizedData(for: request)
 
-        do {
-            let decoded = try JSONDecoder().decode(APIResponse<GeneratedItineraryPreview>.self, from: data)
-            return decoded.data
-        } catch {
-            throw APIError.decodingError
-        }
+        return try decodeEnvelope(GeneratedItineraryPreview.self, from: data, context: "ai generate preview")
     }
 
     func saveTripItinerary(tripId: UUID, body: SaveItineraryRequest) async throws {

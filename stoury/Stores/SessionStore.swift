@@ -65,6 +65,7 @@ final class SessionStore: ObservableObject {
         self.session = nil
         needsPreferences = false
         persistence.clearSession()
+        URLCache.shared.removeAllCachedResponses()
     }
 
     func markPreferencesCompleted(for user: User?) {
