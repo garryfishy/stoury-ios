@@ -13,22 +13,19 @@ struct DestinationCard: View {
     let subtitle: String
     let rating: String
     let imageName: String
-    let action: () -> Void
 
     init(
         badgeText: String,
         title: String,
         subtitle: String,
         rating: String,
-        imageName: String,
-        action: @escaping () -> Void = {}
+        imageName: String
     ) {
         self.badgeText = badgeText
         self.title = title
         self.subtitle = subtitle
         self.rating = rating
         self.imageName = imageName
-        self.action = action
     }
 
     var body: some View {
@@ -66,18 +63,6 @@ struct DestinationCard: View {
             }
 
             Spacer()
-
-//            Button(action: action) {
-//                Image(systemName: "arrowshape.turn.up.right")
-//                    .font(.system(size: 20, weight: .bold))
-//                    .foregroundColor(.orange)
-//                    .frame(width: 44, height: 44)
-//                    .overlay(
-//                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-//                            .stroke(Color.orange, lineWidth: 2)
-//                    )
-//            }
-            .buttonStyle(.plain)
         }
         .padding(16)
         .background(Color(red: 0.99, green: 0.97, blue: 0.95))

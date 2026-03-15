@@ -62,6 +62,7 @@ final class TripGeneratorViewModel: ObservableObject {
         } catch {
             destinationOptions = []
             errorMessage = "Gagal memuat daftar lokasi."
+            AppLogger.error("TripGeneratorViewModel.loadInitialData failed to load destinations", error: error)
         }
 
         do {
@@ -69,6 +70,7 @@ final class TripGeneratorViewModel: ObservableObject {
         } catch {
             masterPreferences = []
             preferenceErrorMessage = "Gagal memuat daftar preferensi."
+            AppLogger.error("TripGeneratorViewModel.loadInitialData failed to load master preferences", error: error)
         }
 
         do {
@@ -78,14 +80,29 @@ final class TripGeneratorViewModel: ObservableObject {
             if preferenceErrorMessage == nil {
                 preferenceErrorMessage = "Gagal memuat preferensi akun."
             }
+            AppLogger.error("TripGeneratorViewModel.loadInitialData failed to load account preferences", error: error)
         }
     }
 
     func matchedAccountPreferenceIDs() -> Set<UUID> {
+        let accountIDs = Set(accountPreferences.map(\.id))
+        let accountSlugs = Set(accountPreferences.map(\.normalizedSlug))
         let accountNames = Set(accountPreferences.map(\.normalizedName))
 
         let matchedIDs = masterPreferences.compactMap { preference -> UUID? in
-            accountNames.contains(preference.normalizedName) ? preference.id : nil
+            if accountIDs.contains(preference.id) {
+                return preference.id
+            }
+
+            if accountSlugs.contains(preference.normalizedSlug) {
+                return preference.id
+            }
+
+            if accountNames.contains(preference.normalizedName) {
+                return preference.id
+            }
+
+            return nil
         }
 
         return Set(matchedIDs)
@@ -101,7 +118,7 @@ final class TripGeneratorViewModel: ObservableObject {
         selectedPreferenceIDs: Set<UUID>
     ) async -> GeneratedTripRoute? {
         errorMessage = nil
-        print("TripGeneratorViewModel.generateTrip started")
+        AppLogger.info("TripGeneratorViewModel.generateTrip started")
 
         guard let destinationName,
               let destination = destinationOptions.first(where: {
@@ -109,19 +126,19 @@ final class TripGeneratorViewModel: ObservableObject {
                   destinationName.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
               }) else {
             errorMessage = "Lokasi yang dipilih belum tersedia."
-            print("Generate trip validation failed: destination not found for name:", destinationName ?? "nil")
+            AppLogger.info("Generate trip validation failed: destination not found for name: \(destinationName ?? "nil")")
             return nil
         }
 
         guard let startDate, let endDate else {
             errorMessage = "Tanggal perjalanan belum lengkap."
-            print("Generate trip validation failed: missing start/end date")
+            AppLogger.info("Generate trip validation failed: missing start/end date")
             return nil
         }
 
         guard let numericBudget = Int(budget.filter(\.isNumber)), numericBudget > 0 else {
             errorMessage = "Budget harus berupa angka."
-            print("Generate trip validation failed: invalid budget input:", budget)
+            AppLogger.info("Generate trip validation failed: invalid budget input: \(budget)")
             return nil
         }
 
@@ -141,14 +158,14 @@ final class TripGeneratorViewModel: ObservableObject {
 
         do {
             let createdTrip = try await apiService.createTrip(body)
-            print("Trip created successfully with id:", createdTrip.id.uuidString)
+            AppLogger.info("Trip created successfully with id: \(createdTrip.id.uuidString)")
             let preview = try await apiService.generateAITripPreview(tripId: createdTrip.id)
-            print("AI itinerary preview generated successfully for trip:", preview.tripId.uuidString)
+            AppLogger.info("AI itinerary preview generated successfully for trip: \(preview.tripId.uuidString)")
             try await apiService.saveTripItinerary(
                 tripId: preview.tripId,
                 body: preview.savePayload
             )
-            print("AI itinerary saved successfully for trip:", preview.tripId.uuidString)
+            AppLogger.info("AI itinerary saved successfully for trip: \(preview.tripId.uuidString)")
             return GeneratedTripRoute(
                 tripId: preview.tripId,
                 tripTitle: body.title,
@@ -158,7 +175,7 @@ final class TripGeneratorViewModel: ObservableObject {
             )
         } catch {
             errorMessage = error.localizedDescription
-            print("Generate trip flow failed:", error)
+            AppLogger.error("Generate trip flow failed", error: error)
             return nil
         }
     }
@@ -167,5 +184,9 @@ final class TripGeneratorViewModel: ObservableObject {
 private extension Preference {
     var normalizedName: String {
         name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    var normalizedSlug: String {
+        slug.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 }

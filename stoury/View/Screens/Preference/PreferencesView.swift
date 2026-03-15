@@ -12,9 +12,15 @@ struct PreferencesView: View {
     @Binding var isPresented: Bool
     @StateObject private var viewModel: PreferencesViewModel
 
-    init(isPresented: Binding<Bool> = .constant(true), viewModel: PreferencesViewModel? = nil) {
+    init(
+        isPresented: Binding<Bool> = .constant(true),
+        sessionStore: SessionStore? = nil,
+        viewModel: PreferencesViewModel? = nil
+    ) {
         self._isPresented = isPresented
-        _viewModel = StateObject(wrappedValue: viewModel ?? PreferencesViewModel())
+        _viewModel = StateObject(
+            wrappedValue: viewModel ?? PreferencesViewModel(sessionStore: sessionStore)
+        )
     }
 
     private var primaryOrange: Color {
@@ -53,7 +59,7 @@ struct PreferencesView: View {
                         Task {
                             let isSaved = await viewModel.savePreferences()
                             if isSaved {
-                                sessionStore.markPreferencesCompleted(for: sessionStore.currentUser)
+                                sessionStore.updatePreferencesRequirement(hasPreferences: true)
                                 isPresented = false
                             }
                         }
@@ -81,4 +87,3 @@ struct PreferencesView: View {
     PreferencesView(isPresented: .constant(true), viewModel: PreferencesViewModel())
         .environmentObject(SessionStore())
 }
-

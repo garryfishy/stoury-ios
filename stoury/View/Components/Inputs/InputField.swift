@@ -10,11 +10,21 @@ struct InputField: View {
     var keyboardType: UIKeyboardType = .default
     var textContentType: UITextContentType? = nil
     var numbersOnly: Bool = false
+    var groupedNumbers: Bool = false
     var isSecure: Bool = false
     var helperText: String? = nil
     var errorText: String? = nil
 
     private let fieldHeight: CGFloat = 52
+    private static let groupedNumberFormatter: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.groupingSeparator = "."
+        formatter.decimalSeparator = ","
+        formatter.maximumFractionDigits = 0
+        formatter.usesGroupingSeparator = true
+        return formatter
+    }()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -61,11 +71,9 @@ struct InputField: View {
                     )
             )
             .onChange(of: text) { _, newValue in
-                guard numbersOnly else { return }
-
-                let filteredValue = newValue.filter(\.isNumber)
-                if filteredValue != newValue {
-                    text = filteredValue
+                let sanitizedValue = sanitizedInput(from: newValue)
+                if sanitizedValue != newValue {
+                    text = sanitizedValue
                 }
             }
 
@@ -80,5 +88,17 @@ struct InputField: View {
             }
         }
     }
-}
 
+    private func sanitizedInput(from rawValue: String) -> String {
+        guard numbersOnly || groupedNumbers else { return rawValue }
+
+        let digitsOnly = rawValue.filter(\.isNumber)
+        guard groupedNumbers else { return digitsOnly }
+        guard !digitsOnly.isEmpty else { return "" }
+
+        let numericValue = NSDecimalNumber(string: digitsOnly)
+        guard numericValue != .notANumber else { return digitsOnly }
+
+        return Self.groupedNumberFormatter.string(from: numericValue) ?? digitsOnly
+    }
+}

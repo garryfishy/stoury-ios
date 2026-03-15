@@ -3,6 +3,7 @@ import UIKit
 
 struct GenerateWithAIView: View {
     @StateObject private var viewModel: TripGeneratorViewModel
+    @Environment(\.dismiss) private var dismiss
     @State private var tripName = ""
     @State private var selectedCity: String? = nil
     @State private var startDate: Date? = nil
@@ -14,9 +15,11 @@ struct GenerateWithAIView: View {
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 4)
     private let sessionStore: SessionStore
+    private let onGeneratedTrip: ((GeneratedTripRoute) -> Void)?
 
-    init(sessionStore: SessionStore) {
+    init(sessionStore: SessionStore, onGeneratedTrip: ((GeneratedTripRoute) -> Void)? = nil) {
         self.sessionStore = sessionStore
+        self.onGeneratedTrip = onGeneratedTrip
         _viewModel = StateObject(
             wrappedValue: TripGeneratorViewModel(sessionStore: sessionStore)
         )
@@ -50,15 +53,21 @@ struct GenerateWithAIView: View {
     private func applyAccountPreferencesSelection() {
         let matchedIDs = viewModel.matchedAccountPreferenceIDs()
 
+        print("GenerateWithAIView.applyAccountPreferencesSelection matched IDs:", matchedIDs.map(\.uuidString))
+        print("GenerateWithAIView.applyAccountPreferencesSelection master preferences:", viewModel.masterPreferences.map(\.name))
+        print("GenerateWithAIView.applyAccountPreferencesSelection account preferences:", viewModel.accountPreferences.map(\.name))
+
         guard !matchedIDs.isEmpty else {
             selectedPreferenceIDs.removeAll()
             usePreference = false
             viewModel.preferenceErrorMessage = "Preferensi akun belum cocok dengan master data."
+            print("GenerateWithAIView.applyAccountPreferencesSelection no matching preferences found")
             return
         }
 
         viewModel.preferenceErrorMessage = nil
         selectedPreferenceIDs = matchedIDs
+        print("GenerateWithAIView.applyAccountPreferencesSelection selectedPreferenceIDs:", selectedPreferenceIDs.map(\.uuidString))
     }
 
     private func preferenceAssetName(for preference: Preference) -> String {
@@ -91,7 +100,11 @@ struct GenerateWithAIView: View {
             )
 
             if let route {
-                generatedTripRoute = route
+                if let onGeneratedTrip {
+                    onGeneratedTrip(route)
+                } else {
+                    generatedTripRoute = route
+                }
             }
         }
     }
@@ -140,7 +153,8 @@ struct GenerateWithAIView: View {
                                 leadingSystemImage: "dollarsign.circle",
                                 keyboardType: .numberPad,
                                 textContentType: .oneTimeCode,
-                                numbersOnly: true
+                                numbersOnly: true,
+                                groupedNumbers: true
                             )
 
                             VStack(alignment: .leading, spacing: 12) {
@@ -251,9 +265,17 @@ struct GenerateWithAIView: View {
         }
         .onChange(of: usePreference) { _, newValue in
             viewModel.preferenceErrorMessage = nil
+            print("GenerateWithAIView.usePreference toggled:", newValue)
+            print("GenerateWithAIView.usePreference current selectedPreferenceIDs:", selectedPreferenceIDs.map(\.uuidString))
 
-            guard newValue else { return }
+            guard newValue else {
+                print("GenerateWithAIView.usePreference turned off")
+                return
+            }
             applyAccountPreferencesSelection()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .returnToHomeRequested)) { _ in
+            dismiss()
         }
         .overlay {
             if viewModel.isGenerating {
@@ -262,7 +284,9 @@ struct GenerateWithAIView: View {
             }
         }
         .allowsHitTesting(!viewModel.isGenerating)
-        .fullScreenCover(item: $generatedTripRoute) { route in
+        .navigationBarBackButtonHidden(true)
+        .enableSwipeBack()
+        .navigationDestination(item: $generatedTripRoute) { route in
             GeneratedItineraryView(sessionStore: sessionStore, route: route)
         }
     }

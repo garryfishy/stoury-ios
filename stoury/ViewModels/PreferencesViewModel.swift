@@ -47,6 +47,7 @@ final class PreferencesViewModel: ObservableObject {
             selectedIDs = selected
         } catch {
             errorMessage = error.localizedDescription
+            AppLogger.error("PreferencesViewModel.loadPreferences failed", error: error)
         }
     }
 
@@ -71,6 +72,7 @@ final class PreferencesViewModel: ObservableObject {
             return true
         } catch {
             errorMessage = error.localizedDescription
+            AppLogger.error("PreferencesViewModel.savePreferences failed", error: error)
             return false
         }
     }
