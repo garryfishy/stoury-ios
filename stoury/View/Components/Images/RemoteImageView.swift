@@ -1,16 +1,22 @@
 import SwiftUI
+import QuickLookThumbnailing
+import UIKit
 import WebKit
 
 struct RemoteImageView<Placeholder: View>: View {
     let url: URL?
     var contentMode: ContentMode = .fill
+    var allowsSVGMarkupFallback = false
     @ViewBuilder let placeholder: () -> Placeholder
 
     var body: some View {
-        if let url, Self.isSVGURL(url) {
+        if let url, Self.isPDFURL(url) {
+            placeholder()
+        } else if let url, Self.isSVGURL(url) {
             SVGRemoteImageView(
                 url: url,
                 contentMode: contentMode,
+                allowsMarkupFallback: allowsSVGMarkupFallback,
                 placeholder: placeholder
             )
         } else {
@@ -36,19 +42,33 @@ struct RemoteImageView<Placeholder: View>: View {
 
         return url.absoluteString.lowercased().contains(".svg")
     }
+
+    private static func isPDFURL(_ url: URL) -> Bool {
+        if url.pathExtension.lowercased() == "pdf" {
+            return true
+        }
+
+        return url.absoluteString.lowercased().contains(".pdf")
+    }
 }
 
 private struct SVGRemoteImageView<Placeholder: View>: View {
     let url: URL
     let contentMode: ContentMode
+    let allowsMarkupFallback: Bool
     @ViewBuilder let placeholder: () -> Placeholder
 
+    @State private var renderedImage: UIImage?
     @State private var svgMarkup: String?
     @State private var hasFailed = false
 
     var body: some View {
-        ZStack {
-            if let svgMarkup {
+        Group {
+            if let renderedImage {
+                Image(uiImage: renderedImage)
+                    .resizable()
+                    .aspectRatio(contentMode: contentMode)
+            } else if let svgMarkup {
                 SVGMarkupWebView(
                     svgMarkup: svgMarkup,
                     contentMode: contentMode
@@ -58,13 +78,18 @@ private struct SVGRemoteImageView<Placeholder: View>: View {
             }
         }
         .task(id: url) {
-            await loadSVG()
+            await loadSVGThumbnail()
         }
     }
 
     @MainActor
-    private func loadSVG() async {
-        guard svgMarkup == nil, !hasFailed else { return }
+    private func loadSVGThumbnail() async {
+        guard renderedImage == nil, !hasFailed else { return }
+
+        if let cachedImage = SVGThumbnailCache.shared.image(for: url) {
+            renderedImage = cachedImage
+            return
+        }
 
         var request = URLRequest(url: url)
         request.cachePolicy = .returnCacheDataElseLoad
@@ -72,13 +97,32 @@ private struct SVGRemoteImageView<Placeholder: View>: View {
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let httpResponse = response as? HTTPURLResponse,
-                  200 ... 299 ~= httpResponse.statusCode,
-                  let markup = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .unicode) else {
+                  200 ... 299 ~= httpResponse.statusCode else {
                 hasFailed = true
                 return
             }
 
-            svgMarkup = markup
+            let temporaryURL = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString)
+                .appendingPathExtension("svg")
+            try data.write(to: temporaryURL, options: .atomic)
+
+            defer {
+                try? FileManager.default.removeItem(at: temporaryURL)
+            }
+
+            do {
+                let thumbnail = try await SVGThumbnailGenerator.shared.thumbnail(for: temporaryURL)
+                SVGThumbnailCache.shared.insert(thumbnail, for: url)
+                renderedImage = thumbnail
+            } catch {
+                if allowsMarkupFallback,
+                   let markup = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .unicode) {
+                    svgMarkup = markup
+                } else {
+                    hasFailed = true
+                }
+            }
         } catch {
             hasFailed = true
         }
@@ -180,5 +224,44 @@ private struct SVGMarkupWebView: UIViewRepresentable {
 
     final class Coordinator {
         var lastMarkup: String?
+    }
+}
+
+private final class SVGThumbnailCache {
+    static let shared = SVGThumbnailCache()
+
+    private let cache = NSCache<NSString, UIImage>()
+
+    func image(for url: URL) -> UIImage? {
+        cache.object(forKey: url.absoluteString as NSString)
+    }
+
+    func insert(_ image: UIImage, for url: URL) {
+        cache.setObject(image, forKey: url.absoluteString as NSString)
+    }
+}
+
+private final class SVGThumbnailGenerator {
+    static let shared = SVGThumbnailGenerator()
+
+    func thumbnail(for fileURL: URL) async throws -> UIImage {
+        let request = QLThumbnailGenerator.Request(
+            fileAt: fileURL,
+            size: CGSize(width: 1200, height: 1200),
+            scale: UIScreen.main.scale,
+            representationTypes: .thumbnail
+        )
+
+        let representation = try await withCheckedThrowingContinuation { continuation in
+            QLThumbnailGenerator.shared.generateBestRepresentation(for: request) { thumbnail, error in
+                if let thumbnail {
+                    continuation.resume(returning: thumbnail)
+                } else {
+                    continuation.resume(throwing: error ?? URLError(.cannotDecodeContentData))
+                }
+            }
+        }
+
+        return representation.uiImage
     }
 }

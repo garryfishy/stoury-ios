@@ -141,7 +141,8 @@ struct ItineraryDetailView: View {
     private func heroImage(for attraction: AttractionDetail) -> some View {
         RemoteImageView(
             url: attraction.mainImageUrl ?? attraction.thumbnailImageUrl,
-            contentMode: .fill
+            contentMode: .fill,
+            allowsSVGMarkupFallback: true
         ) {
             Rectangle()
                 .fill(Color(.systemGray5))
@@ -222,7 +223,7 @@ struct ItineraryDetailView: View {
                             Button {
                                 selectedPhoto = photo
                             } label: {
-                                RemoteImageView(url: photo.url, contentMode: .fill) {
+                                RemoteImageView(url: photo.url, contentMode: .fill, allowsSVGMarkupFallback: true) {
                                     Rectangle()
                                         .fill(Color(.systemGray5))
                                 }
@@ -350,7 +351,7 @@ private struct AttractionPhotoPreview: View {
             Color.black
                 .ignoresSafeArea()
 
-            RemoteImageView(url: photo.url, contentMode: .fit) {
+            RemoteImageView(url: photo.url, contentMode: .fit, allowsSVGMarkupFallback: true) {
                 VStack(spacing: 12) {
                     Image(systemName: "photo")
                         .font(.system(size: 32, weight: .medium))
@@ -447,7 +448,7 @@ private extension AttractionDetail {
 
     func openStatusLine(selectedDate: String?) -> String {
         guard let highlightedKey = selectedWeekdayKey(from: selectedDate) else {
-            return "Pilih hari perjalanan untuk melihat highlight."
+            return ""
         }
 
         let windows = openingHours[highlightedKey] ?? []
