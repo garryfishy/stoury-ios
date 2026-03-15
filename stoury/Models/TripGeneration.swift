@@ -30,7 +30,7 @@ struct CreateTripRequest: Encodable {
     let endDate: String
     let budget: Int
     let preferenceSource: String
-    let preferenceCategoryIds: [UUID]
+    let preferenceCategoryIds: [UUID]?
 }
 
 struct CreatedTrip: Decodable, Identifiable {

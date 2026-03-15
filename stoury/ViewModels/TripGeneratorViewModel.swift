@@ -119,6 +119,18 @@ final class TripGeneratorViewModel: ObservableObject {
     ) async -> GeneratedTripRoute? {
         errorMessage = nil
         AppLogger.info("TripGeneratorViewModel.generateTrip started")
+        AppLogger.info("""
+        Generate trip validation context:
+        - title: \(title)
+        - destinationName: \(destinationName ?? "nil")
+        - startDate: \(startDate.map { dateFormatter.string(from: $0) } ?? "nil")
+        - endDate: \(endDate.map { dateFormatter.string(from: $0) } ?? "nil")
+        - budget: \(budget)
+        - useAccountPreferences: \(useAccountPreferences)
+        - selectedPreferenceIDs: \(selectedPreferenceIDs.map(\.uuidString))
+        - masterPreferences: \(masterPreferences.map(\.name))
+        - accountPreferences: \(accountPreferences.map(\.name))
+        """)
 
         guard let destinationName,
               let destination = destinationOptions.first(where: {
@@ -142,6 +154,17 @@ final class TripGeneratorViewModel: ObservableObject {
             return nil
         }
 
+        if useAccountPreferences && selectedPreferenceIDs.isEmpty {
+            errorMessage = "Preferensi akun belum tersedia atau belum cocok."
+            AppLogger.info("""
+            Generate trip validation failed: useAccountPreferences is enabled but selectedPreferenceIDs is empty.
+            - matchedAccountPreferenceIDs: \(matchedAccountPreferenceIDs().map(\.uuidString))
+            - accountPreferences: \(accountPreferences.map { "\($0.name) [\($0.slug)]" })
+            - masterPreferences: \(masterPreferences.map { "\($0.name) [\($0.slug)]" })
+            """)
+            return nil
+        }
+
         isGenerating = true
         defer { isGenerating = false }
 
@@ -152,8 +175,8 @@ final class TripGeneratorViewModel: ObservableObject {
             startDate: dateFormatter.string(from: startDate),
             endDate: dateFormatter.string(from: endDate),
             budget: numericBudget,
-            preferenceSource: useAccountPreferences ? "account" : "custom",
-            preferenceCategoryIds: Array(selectedPreferenceIDs)
+            preferenceSource: useAccountPreferences ? "profile" : "custom",
+            preferenceCategoryIds: useAccountPreferences ? nil : Array(selectedPreferenceIDs)
         )
 
         do {
