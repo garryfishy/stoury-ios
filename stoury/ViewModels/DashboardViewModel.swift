@@ -15,9 +15,7 @@ final class DashboardViewModel: ObservableObject {
     @Published var isSearching = false
     @Published var isLoadingMoreSearchResults = false
     @Published var errorMessage: String?
-    @Published var searchText = ""
 
-    private let sessionStore: SessionStore
     private let dashboardStore: DashboardStore
     private let apiService: APIService
     private let searchLimit = 10
@@ -31,7 +29,6 @@ final class DashboardViewModel: ObservableObject {
         dashboardStore: DashboardStore? = nil,
         apiService: APIService? = nil
     ) {
-        self.sessionStore = sessionStore
         self.dashboardStore = dashboardStore ?? DashboardStore()
         self.apiService = apiService ?? APIService(sessionStore: sessionStore)
     }
@@ -67,12 +64,7 @@ final class DashboardViewModel: ObservableObject {
     var isSearchActive: Bool {
         !activeSearchQuery.isEmpty
     }
-    
-    func logout() {
-        sessionStore.clearSession()
-        dashboardStore.clear()
-    }
-    
+
     func getDashboard() async {
         errorMessage = nil
         isLoading = true
@@ -87,10 +79,7 @@ final class DashboardViewModel: ObservableObject {
             dashboardStore.setHome(home)
             dashboardStore.setDestinations(destinations)
 
-            let initialDestinationSlug = resolveInitialDestinationSlug(
-                featuredDestinationSlug: home.featured.first?.destination?.slug,
-                destinations: destinations
-            )
+            let initialDestinationSlug = destinations.first?.slug
 
             if let initialDestinationSlug {
                 dashboardStore.setSelectedDestination(slug: initialDestinationSlug)
@@ -99,7 +88,7 @@ final class DashboardViewModel: ObservableObject {
                 dashboardStore.setSelectedDestinationAttractions([])
             }
         } catch {
-            print("DashboardViewModel.getDashboard failed:", error)
+            AppLogger.error("DashboardViewModel.load failed", error: error)
             errorMessage = error.localizedDescription
         }
     }
@@ -108,13 +97,17 @@ final class DashboardViewModel: ObservableObject {
         guard dashboardStore.selectedDestinationSlug != destination.slug else { return }
         errorMessage = nil
         dashboardStore.setSelectedDestination(slug: destination.slug)
+
+        if dashboardStore.cachedAttractions(for: destination.slug) != nil {
+            return
+        }
+
         dashboardStore.setSelectedDestinationAttractions([])
         await loadAttractions(for: destination.slug, showLoader: true)
     }
 
     func handleSearchQueryChanged(_ query: String) async {
         let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        searchText = query
 
         guard !trimmedQuery.isEmpty else {
             clearSearch()
@@ -200,7 +193,7 @@ final class DashboardViewModel: ObservableObject {
             }
 
             hasMoreSearchResults = false
-            print("DashboardViewModel.search failed for query '\(requestedQuery)':", error)
+            AppLogger.error("DashboardViewModel.search failed for query '\(requestedQuery)'", error: error)
             errorMessage = error.localizedDescription
         }
     }
@@ -221,24 +214,14 @@ final class DashboardViewModel: ObservableObject {
                 page: 1,
                 limit: 100
             )
-            dashboardStore.setSelectedDestinationAttractions(payload.items)
+            dashboardStore.setDestinationAttractions(payload.items, for: slug)
         } catch {
-            print("DashboardViewModel.loadAttractions failed for \(slug):", error)
+            AppLogger.error("DashboardViewModel.loadAttractions failed for \(slug)", error: error)
             errorMessage = error.localizedDescription
-            dashboardStore.setSelectedDestinationAttractions([])
+            if dashboardStore.selectedDestinationSlug == slug {
+                dashboardStore.setSelectedDestinationAttractions([])
+            }
         }
-    }
-
-    private func resolveInitialDestinationSlug(
-        featuredDestinationSlug: String?,
-        destinations: [DashboardDestination]
-    ) -> String? {
-        if let featuredDestinationSlug,
-           destinations.contains(where: { $0.slug == featuredDestinationSlug }) {
-            return featuredDestinationSlug
-        }
-
-        return destinations.first?.slug
     }
 
     private func clearSearch() {

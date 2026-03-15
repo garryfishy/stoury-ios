@@ -15,6 +15,8 @@ final class DashboardStore: ObservableObject {
     @Published private(set) var selectedDestinationSlug: String?
     @Published private(set) var selectedDestinationAttractions: [DestinationAttractionItem] = []
 
+    private var destinationAttractionsBySlug: [String: [DestinationAttractionItem]] = [:]
+
     var featured: [DashboardFeaturedItem] {
         home?.featured ?? []
     }
@@ -34,16 +36,22 @@ final class DashboardStore: ObservableObject {
 
     func setSelectedDestination(slug: String?) {
         selectedDestinationSlug = slug
+        selectedDestinationAttractions = slug.flatMap { destinationAttractionsBySlug[$0] } ?? []
     }
 
     func setSelectedDestinationAttractions(_ attractions: [DestinationAttractionItem]) {
         selectedDestinationAttractions = attractions
     }
 
-    func clear() {
-        home = nil
-        destinations = []
-        selectedDestinationSlug = nil
-        selectedDestinationAttractions = []
+    func cachedAttractions(for slug: String) -> [DestinationAttractionItem]? {
+        destinationAttractionsBySlug[slug]
+    }
+
+    func setDestinationAttractions(_ attractions: [DestinationAttractionItem], for slug: String) {
+        destinationAttractionsBySlug[slug] = attractions
+
+        if selectedDestinationSlug == slug {
+            selectedDestinationAttractions = attractions
+        }
     }
 }

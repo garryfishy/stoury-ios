@@ -28,6 +28,7 @@ final class RegisterViewModel: ObservableObject {
             isSuccess = true
         } catch {
             errorMessage = error.localizedDescription
+            AppLogger.error("RegisterViewModel.register failed", error: error)
         }
     }
 }

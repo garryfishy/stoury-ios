@@ -36,7 +36,6 @@ struct ItineraryDetailView: View {
                     VStack(alignment: .leading, spacing: 22) {
                         heroImage(for: attraction)
                         attractionSummary(for: attraction)
-                        photosSection(for: attraction)
                         descriptionSection(for: attraction)
                         openingHoursSection(for: attraction)
                         locationSection(for: attraction)
@@ -58,6 +57,7 @@ struct ItineraryDetailView: View {
             dismiss()
         }
         .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
         .enableSwipeBack()
         .fullScreenCover(item: $selectedPhoto) { photo in
             AttractionPhotoPreview(photo: photo)
@@ -139,23 +139,17 @@ struct ItineraryDetailView: View {
     }
 
     private func heroImage(for attraction: AttractionDetail) -> some View {
-        AsyncImage(url: attraction.mainImageUrl ?? attraction.thumbnailImageUrl) { phase in
-            switch phase {
-            case .success(let image):
-                image
-                    .resizable()
-                    .scaledToFill()
-            case .empty, .failure:
-                Rectangle()
-                    .fill(Color(.systemGray5))
-                    .overlay {
-                        Image(systemName: "photo")
-                            .font(.system(size: 28, weight: .medium))
-                            .foregroundStyle(.gray)
-                    }
-            @unknown default:
-                Color(.systemGray5)
-            }
+        RemoteImageView(
+            url: attraction.mainImageUrl ?? attraction.thumbnailImageUrl,
+            contentMode: .fill
+        ) {
+            Rectangle()
+                .fill(Color(.systemGray5))
+                .overlay {
+                    Image(systemName: "photo")
+                        .font(.system(size: 28, weight: .medium))
+                        .foregroundStyle(.gray)
+                }
         }
         .frame(height: 240)
         .clipped()
@@ -228,18 +222,9 @@ struct ItineraryDetailView: View {
                             Button {
                                 selectedPhoto = photo
                             } label: {
-                                AsyncImage(url: photo.url) { phase in
-                                    switch phase {
-                                    case .success(let image):
-                                        image
-                                            .resizable()
-                                            .scaledToFill()
-                                    case .empty, .failure:
-                                        Rectangle()
-                                            .fill(Color(.systemGray5))
-                                    @unknown default:
-                                        Color(.systemGray5)
-                                    }
+                                RemoteImageView(url: photo.url, contentMode: .fill) {
+                                    Rectangle()
+                                        .fill(Color(.systemGray5))
                                 }
                                 .frame(width: 88, height: 64)
                                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -365,32 +350,19 @@ private struct AttractionPhotoPreview: View {
             Color.black
                 .ignoresSafeArea()
 
-            AsyncImage(url: photo.url) { phase in
-                switch phase {
-                case .success(let image):
-                    image
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 40)
-                case .empty:
-                    ProgressView()
-                        .tint(.white)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                case .failure:
-                    VStack(spacing: 12) {
-                        Image(systemName: "photo")
-                            .font(.system(size: 32, weight: .medium))
-                        Text("Foto tidak bisa ditampilkan.")
-                            .font(.system(size: 15, weight: .medium))
-                    }
-                    .foregroundStyle(.white.opacity(0.85))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                @unknown default:
-                    EmptyView()
+            RemoteImageView(url: photo.url, contentMode: .fit) {
+                VStack(spacing: 12) {
+                    Image(systemName: "photo")
+                        .font(.system(size: 32, weight: .medium))
+                    Text("Foto tidak bisa ditampilkan.")
+                        .font(.system(size: 15, weight: .medium))
                 }
+                .foregroundStyle(.white.opacity(0.85))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 40)
 
             Button {
                 dismiss()

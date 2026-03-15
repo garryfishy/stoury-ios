@@ -61,9 +61,7 @@ struct LoginView: View {
                         
                         HStack {
                             Spacer()
-                            Button("Lupa sandi?") {
-                                // TODO: navigate to forgot password
-                            }
+                            Button("Lupa sandi?") {}
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(.blue)
                         }

@@ -34,7 +34,7 @@ final class AttractionDetailViewModel: ObservableObject {
             attraction = try await apiService.getAttraction(attractionId: route.attractionId)
         } catch {
             errorMessage = error.localizedDescription
-            print("AttractionDetailViewModel.load failed for attraction \(route.attractionId.uuidString):", error)
+            AppLogger.error("AttractionDetailViewModel.load failed for attraction \(route.attractionId.uuidString)", error: error)
         }
     }
 }

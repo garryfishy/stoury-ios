@@ -19,9 +19,14 @@ struct ContentView: View {
     ]
 
     private let sessionStore: SessionStore
+    private let onNavigationActiveChange: ((Bool) -> Void)?
 
-    init(sessionStore: SessionStore) {
+    init(
+        sessionStore: SessionStore,
+        onNavigationActiveChange: ((Bool) -> Void)? = nil
+    ) {
         self.sessionStore = sessionStore
+        self.onNavigationActiveChange = onNavigationActiveChange
         _viewModel = StateObject(
             wrappedValue: DashboardViewModel(sessionStore: sessionStore)
         )
@@ -29,15 +34,23 @@ struct ContentView: View {
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 28) {
-                    searchSection
-                    featuredSection
-                    destinationSection
+            VStack(spacing: 0) {
+                searchSection
+                    .padding(.top, 24)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 24)
+                    .background(.white)
+                    .zIndex(99_999)
+
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 28) {
+                        featuredSection
+                        destinationSection
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 24)
+                    .contentShape(Rectangle())
                 }
-                .padding(.vertical, 24)
-                .padding(.horizontal, 20)
-                .contentShape(Rectangle())
             }
             .scrollDismissesKeyboard(.interactively)
             .simultaneousGesture(
@@ -45,11 +58,18 @@ struct ContentView: View {
                     dismissKeyboard()
                 }
             )
+            .background(.white)
             .task {
                 await viewModel.getDashboard()
             }
             .task(id: normalizedSearchQuery) {
                 await viewModel.handleSearchQueryChanged(normalizedSearchQuery)
+            }
+            .onAppear {
+                onNavigationActiveChange?(false)
+            }
+            .onChange(of: navigationPath.count) { _, newValue in
+                onNavigationActiveChange?(newValue > 0)
             }
             .navigationDestination(for: AttractionDetailRoute.self) { route in
                 ItineraryDetailView(sessionStore: sessionStore, route: route)
@@ -67,14 +87,20 @@ struct ContentView: View {
         !normalizedSearchQuery.isEmpty
     }
 
-    private var searchSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SearchInputField(text: $searchText)
+    private var searchDropdownTopPadding: CGFloat {
+        82
+    }
 
-            if showingSearchDropdown {
-                searchDropdown
+    private var searchSection: some View {
+        SearchInputField(text: $searchText)
+            .overlay(alignment: .topLeading) {
+                if showingSearchDropdown {
+                    searchDropdown
+                        .padding(.top, searchDropdownTopPadding)
+                        .zIndex(99_999)
+                }
             }
-        }
+            .zIndex(99_999)
     }
 
     private var featuredSection: some View {

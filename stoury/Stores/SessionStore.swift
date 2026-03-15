@@ -69,10 +69,14 @@ final class SessionStore: ObservableObject {
     }
 
     func markPreferencesCompleted(for user: User?) {
-        guard let user else { return }
-        let key = hasCompletedPreferencesKeyPrefix + userKey(for: user)
-        UserDefaults.standard.set(true, forKey: key)
-        needsPreferences = false
+        updatePreferencesRequirement(hasPreferences: true, for: user)
+    }
+
+    func updatePreferencesRequirement(hasPreferences: Bool, for user: User? = nil) {
+        guard let resolvedUser = user ?? currentUser else { return }
+        let key = hasCompletedPreferencesKeyPrefix + userKey(for: resolvedUser)
+        UserDefaults.standard.set(hasPreferences, forKey: key)
+        needsPreferences = !hasPreferences
     }
 
     func shouldShowPreferences(for user: User?) -> Bool {

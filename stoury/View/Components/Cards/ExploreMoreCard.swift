@@ -11,48 +11,33 @@ struct ExploreMoreCard: View {
     let imageURL: URL?
     let title: String?
 
+    private var placeholderImage: some View {
+        LinearGradient(
+            colors: [
+                Color.gray.opacity(0.16),
+                Color.gray.opacity(0.08)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        .overlay {
+            Image(systemName: "photo")
+                .font(.system(size: 24, weight: .medium))
+                .foregroundStyle(.gray.opacity(0.55))
+        }
+    }
+
     var body: some View {
         RoundedRectangle(cornerRadius: 16)
             .fill(Color.white)
             .frame(width: 215, height: 155)
             .overlay {
-                if let imageURL {
-                    AsyncImage(url: imageURL) { phase in
-                        switch phase {
-                        case .empty:
-                            ProgressView()
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .scaledToFill()
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                .clipped()
-
-                        case .failure:
-                            Color.gray.opacity(0.2)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                .overlay {
-                                    Image(systemName: "photo")
-                                        .font(.system(size: 24, weight: .medium))
-                                        .foregroundStyle(.gray.opacity(0.7))
-                                }
-
-                        @unknown default:
-                            Color.gray.opacity(0.2)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        }
-                    }
-                } else {
-                    Color.gray.opacity(0.2)
+                RemoteImageView(url: imageURL, contentMode: .fill) {
+                    placeholderImage
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .overlay {
-                            Image(systemName: "photo")
-                                .font(.system(size: 24, weight: .medium))
-                                .foregroundStyle(.gray.opacity(0.7))
-                        }
-                }
+                    }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
             }
             .overlay(alignment: .bottom) {
                 Rectangle()

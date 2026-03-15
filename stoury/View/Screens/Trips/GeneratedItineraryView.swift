@@ -88,7 +88,7 @@ struct GeneratedItineraryView: View {
         }
         .navigationBarBackButtonHidden(true)
         .enableSwipeBack()
-        .fullScreenCover(item: $selectedAttractionRoute) { selectedRoute in
+        .navigationDestination(item: $selectedAttractionRoute) { selectedRoute in
             ItineraryDetailView(
                 sessionStore: sessionStore,
                 route: selectedRoute
@@ -181,21 +181,12 @@ struct GeneratedItineraryView: View {
         }
         .frame(height: height)
         .background {
-            AsyncImage(url: route.destination.heroImageUrl) { phase in
-                switch phase {
-                case .success(let image):
-                    image
-                        .resizable()
-                        .scaledToFill()
-                case .empty, .failure:
-                    LinearGradient(
-                        colors: [Color("PrimaryOrange"), Color.black.opacity(0.7)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                @unknown default:
-                    Color("PrimaryOrange")
-                }
+            RemoteImageView(url: route.destination.heroImageUrl, contentMode: .fill) {
+                LinearGradient(
+                    colors: [Color("PrimaryOrange"), Color.black.opacity(0.7)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
             }
         }
     }
@@ -529,25 +520,11 @@ struct GeneratedItineraryView: View {
     }
 
     private func cardImage(for item: TripItineraryItem) -> some View {
-        Group {
-            if let imageURL = item.attraction?.thumbnailImageUrl ?? item.attraction?.mainImageUrl {
-                AsyncImage(url: imageURL) { phase in
-                    switch phase {
-                    case .empty:
-                        imagePlaceholder
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFill()
-                    case .failure:
-                        imagePlaceholder
-                    @unknown default:
-                        imagePlaceholder
-                    }
-                }
-            } else {
-                imagePlaceholder
-            }
+        RemoteImageView(
+            url: item.attraction?.thumbnailImageUrl ?? item.attraction?.mainImageUrl,
+            contentMode: .fill
+        ) {
+            imagePlaceholder
         }
         .frame(width: 74, height: 74)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))

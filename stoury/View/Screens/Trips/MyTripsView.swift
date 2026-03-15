@@ -16,10 +16,15 @@ struct MyTripsView: View {
 
     @StateObject private var viewModel: MyTripViewModel
     private let sessionStore: SessionStore
+    private let onNavigationActiveChange: ((Bool) -> Void)?
     @State private var navigationPath: [TripsRoute] = []
 
-    init(sessionStore: SessionStore) {
+    init(
+        sessionStore: SessionStore,
+        onNavigationActiveChange: ((Bool) -> Void)? = nil
+    ) {
         self.sessionStore = sessionStore
+        self.onNavigationActiveChange = onNavigationActiveChange
         _viewModel = StateObject(
             wrappedValue: MyTripViewModel(sessionStore: sessionStore)
         )
@@ -52,6 +57,12 @@ struct MyTripsView: View {
             content
                 .task {
                     await viewModel.getTrips()
+                }
+                .onAppear {
+                    onNavigationActiveChange?(false)
+                }
+                .onChange(of: navigationPath.count) { _, newValue in
+                    onNavigationActiveChange?(newValue > 0)
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .returnToHomeRequested)) { _ in
                     navigationPath.removeAll()
@@ -210,19 +221,12 @@ private struct TripSummaryCard: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
-            AsyncImage(url: trip.destination.heroImageUrl) { phase in
-                switch phase {
-                case .success(let image):
-                    image
-                        .resizable()
-                        .scaledToFill()
-                default:
-                    ZStack {
-                        backgroundColor.opacity(0.7)
-                        Image(systemName: "photo")
-                            .font(.system(size: 20, weight: .medium))
-                            .foregroundStyle(.gray)
-                    }
+            RemoteImageView(url: trip.destination.heroImageUrl, contentMode: .fill) {
+                ZStack {
+                    backgroundColor.opacity(0.7)
+                    Image(systemName: "photo")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundStyle(.gray)
                 }
             }
             .frame(width: 98, height: 98)

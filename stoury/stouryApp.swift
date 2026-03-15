@@ -11,7 +11,6 @@ import SwiftUI
 struct stouryApp: App {
     @StateObject private var sessionStore = SessionStore()
 
-      
     var body: some Scene {
         WindowGroup {
             RootView()

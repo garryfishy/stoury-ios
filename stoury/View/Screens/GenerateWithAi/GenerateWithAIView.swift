@@ -53,15 +53,21 @@ struct GenerateWithAIView: View {
     private func applyAccountPreferencesSelection() {
         let matchedIDs = viewModel.matchedAccountPreferenceIDs()
 
+        print("GenerateWithAIView.applyAccountPreferencesSelection matched IDs:", matchedIDs.map(\.uuidString))
+        print("GenerateWithAIView.applyAccountPreferencesSelection master preferences:", viewModel.masterPreferences.map(\.name))
+        print("GenerateWithAIView.applyAccountPreferencesSelection account preferences:", viewModel.accountPreferences.map(\.name))
+
         guard !matchedIDs.isEmpty else {
             selectedPreferenceIDs.removeAll()
             usePreference = false
             viewModel.preferenceErrorMessage = "Preferensi akun belum cocok dengan master data."
+            print("GenerateWithAIView.applyAccountPreferencesSelection no matching preferences found")
             return
         }
 
         viewModel.preferenceErrorMessage = nil
         selectedPreferenceIDs = matchedIDs
+        print("GenerateWithAIView.applyAccountPreferencesSelection selectedPreferenceIDs:", selectedPreferenceIDs.map(\.uuidString))
     }
 
     private func preferenceAssetName(for preference: Preference) -> String {
@@ -147,7 +153,8 @@ struct GenerateWithAIView: View {
                                 leadingSystemImage: "dollarsign.circle",
                                 keyboardType: .numberPad,
                                 textContentType: .oneTimeCode,
-                                numbersOnly: true
+                                numbersOnly: true,
+                                groupedNumbers: true
                             )
 
                             VStack(alignment: .leading, spacing: 12) {
@@ -258,8 +265,13 @@ struct GenerateWithAIView: View {
         }
         .onChange(of: usePreference) { _, newValue in
             viewModel.preferenceErrorMessage = nil
+            print("GenerateWithAIView.usePreference toggled:", newValue)
+            print("GenerateWithAIView.usePreference current selectedPreferenceIDs:", selectedPreferenceIDs.map(\.uuidString))
 
-            guard newValue else { return }
+            guard newValue else {
+                print("GenerateWithAIView.usePreference turned off")
+                return
+            }
             applyAccountPreferencesSelection()
         }
         .onReceive(NotificationCenter.default.publisher(for: .returnToHomeRequested)) { _ in
@@ -274,7 +286,7 @@ struct GenerateWithAIView: View {
         .allowsHitTesting(!viewModel.isGenerating)
         .navigationBarBackButtonHidden(true)
         .enableSwipeBack()
-        .fullScreenCover(item: $generatedTripRoute) { route in
+        .navigationDestination(item: $generatedTripRoute) { route in
             GeneratedItineraryView(sessionStore: sessionStore, route: route)
         }
     }

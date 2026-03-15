@@ -42,7 +42,7 @@ final class MyTripViewModel: ObservableObject {
             }
 
             errorMessage = error.localizedDescription
-            print("MyTripViewModel.getTrips failed:", error)
+            AppLogger.error("MyTripViewModel.getTrips failed", error: error)
         }
     }
 
